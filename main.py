@@ -4,8 +4,10 @@ from PIL import Image
 from util import get_limits
 
 
-yellow = [0, 255, 255]  # yellow in BGR colorspace
-cap = cv2.VideoCapture(2)
+yellow = [0, 255, 255]  # yellow in BGR 
+red = [0,0,255] # red in BGR
+blue = [255,0,0]
+cap = cv2.VideoCapture(0) #the index of the webcam you want to connect to
 while True:
     ret, frame = cap.read()
 
