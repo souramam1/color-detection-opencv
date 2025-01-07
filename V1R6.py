@@ -27,7 +27,8 @@ class Camera:
     def capture_frame(self):
         """Capture a frame from the camera and return it in BGR format"""
         frame = self.picam2.capture_array()
-        return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        return frame
+        # return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR) #UNCOMMENT IF IF PICAMERA USES RGB
 
     def stop(self):
         """Stop the camera"""
@@ -49,7 +50,7 @@ class ImageProcessor:
 
         if bbox is not None:
             x1, y1, x2, y2 = bbox
-            frame = cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 5)
+            frame = cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 5) # This is in BGR format
         
         return frame
 
