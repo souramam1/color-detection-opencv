@@ -9,6 +9,7 @@ time.sleep(2)
 
 img = picam2.capture_array()
 
+cv2.imwrite("output.jpg", img)
 cv2.imshow("Output",img)
 cv2.waitKey(0)
 
