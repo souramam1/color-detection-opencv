@@ -28,7 +28,7 @@ try:
         
         # Convert to BGR
         
-        frame_bgr = cv2.cvtColor(frame_bgr,cv2.COLORRGB2BGR)
+        frame_bgr = cv2.cvtColor(frame,cv2.COLORRGB2BGR)
 
         # Display the frame in a window
         cv2.imshow("Live Feed", frame_bgr)
