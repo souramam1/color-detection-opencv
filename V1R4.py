@@ -5,8 +5,17 @@ import time
 # Initialize Picamera2
 picam2 = Picamera2()
 
+start_time = time.time()
+
 # Configure the camera for preview
 picam2.configure(picam2.create_preview_configuration(main={"format": "RGB888", "size": (640, 480)}))
+
+# End timing for configuration
+end_time = time.time()
+
+# Calculate and display the time taken
+config_time = end_time - start_time
+print(f"Camera configuration took {config_time:.2f} seconds.")
 
 # Start the camera
 picam2.start()
