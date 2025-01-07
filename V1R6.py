@@ -49,7 +49,7 @@ class ImageProcessor:
 
         if bbox is not None:
             x1, y1, x2, y2 = bbox
-            frame = cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 5)
+            frame = cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 5)
         
         return frame
 
