@@ -24,10 +24,14 @@ time.sleep(2)  # Allow time for the camera to initialize
 try:
     while True:
         # Capture a frame
-        frame = picam2.capture_array()
+        frame = picam2.capture_array() #PiCamera frames are in RGB format instead of the BGR format that the webcams use!!!
+        
+        # Convert to BGR
+        
+        frame_bgr = cv2.cvtColor(frame_bgr,cv2.COLORRGB2BGR)
 
         # Display the frame in a window
-        cv2.imshow("Live Feed", frame)
+        cv2.imshow("Live Feed", frame_bgr)
 
         # Break the loop if 'q' is pressed
         if cv2.waitKey(1) & 0xFF == ord('q'):
