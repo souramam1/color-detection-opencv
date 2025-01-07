@@ -14,6 +14,7 @@ class ColorDetection:
         }
         
         self.kernel = np.ones((5, 5), "uint8")  # Kernel for dilation
+        self.object_counts = {color: 0 for color in self.color_ranges}  # Initialize object counts for each color
     
     def process_frame(self):
         # Read the current frame from the webcam
@@ -37,12 +38,15 @@ class ColorDetection:
     
     def detect_and_draw_contours(self, imageFrame, masks):
         # Process the masks and draw contours around detected colors
+
         for color, mask in masks.items():
             contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            self.object_counts[color] = 0  # Reset the count for each color
             
             for contour in contours:
                 area = cv2.contourArea(contour)
                 if area > 300:  # Only consider large enough contours
+                    self.object_counts[color] += 1  # Increase the count for this color
                     x, y, w, h = cv2.boundingRect(contour)
                     cv2.rectangle(imageFrame, (x, y), (x + w, y + h), self.get_color_for_display(color), 2)
                     cv2.putText(imageFrame, f"{color.capitalize()} Colour", (x, y),
@@ -60,7 +64,16 @@ class ColorDetection:
     
     def show_result(self, imageFrame):
         # Display the image with detected color regions
+        
+        y_offset = 30  # Starting y position for displaying tally
+        for color, count in self.object_counts.items():
+            cv2.putText(imageFrame, f"{color.capitalize()} Objects: {count}", (10, y_offset),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, self.get_color_for_display(color), 3)
+            y_offset += 40  # Move down for the next color tally
+            
         cv2.imshow("Multiple Color Detection in Real-Time", imageFrame)
+        
+        
 
     def run(self):
         # Main loop to continuously capture frames, detect colors, and display results
