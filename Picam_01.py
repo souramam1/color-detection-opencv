@@ -2,126 +2,134 @@ import numpy as np
 import cv2
 from picamera2 import Picamera2
 from PIL import Image
-import time
 from collections import deque
 
-class Camera:
-    def __init__(self, resolution=(640, 480), format="RGB888"):
+class ColorDetection:
+    def __init__(self, smoothing_window_size=5, resolution=(640, 480), format="RGB888"):
+        # Initialize Picamera2 and set color ranges for Red, Green, and Blue
         self.picam2 = Picamera2()
         self.resolution = resolution
         self.format = format
         self.configure_camera()
-
-    def configure_camera(self):
-        """Configure the camera with specified resolution and format"""
-        start_time = time.time()
-        self.picam2.configure(self.picam2.create_preview_configuration(main={"format": self.format, "size": self.resolution}))
-        end_time = time.time()
-        config_time = end_time - start_time
-        print(f"Camera configuration took {config_time:.2f} seconds.")
-
-    def start(self):
-        """Start the camera"""
-        self.picam2.start()
-        time.sleep(2)  # Allow time for the camera to initialize
-
-    def capture_frame(self):
-        """Capture a frame from the camera and return it in BGR format"""
-        frame = self.picam2.capture_array()
-        return frame
-        #return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR format
-
-    def stop(self):
-        """Stop the camera"""
-        self.picam2.stop()
-        self.picam2.close()
-
-class ImageProcessor:
-    def __init__(self, color_name, smoothing_window_size=5):
-        self.color_name = color_name
-        self.smoothing_window_size = smoothing_window_size
-        self.kernel = np.ones((5, 5), "uint8")  # Kernel for dilation
-        self.object_counts = deque(maxlen=smoothing_window_size)
-
-        # Hardcoded HSV limits for red, green, and blue
+        
+        # Define lower and upper ranges for Red, Green, and Blue in HSV space
         self.color_ranges = {
             "red": (np.array([136, 87, 111], np.uint8), np.array([180, 255, 255], np.uint8)),
             "green": (np.array([25, 52, 72], np.uint8), np.array([102, 255, 255], np.uint8)),
             "blue": (np.array([94, 80, 2], np.uint8), np.array([120, 255, 255], np.uint8))
         }
-        if color_name not in self.color_ranges:
-            raise ValueError(f"Invalid color name: {color_name}. Choose from {list(self.color_ranges.keys())}.")
+        
+        self.kernel = np.ones((5, 5), "uint8")  # Kernel for dilation
+        self.smoothing_window_size = smoothing_window_size  # Number of frames to smooth over
+        
+        # Initialize object counts and deque (for history)
+        self.object_counts = {color: deque(maxlen=smoothing_window_size) for color in self.color_ranges}
+    
+    def configure_camera(self):
+        """Configure the camera with specified resolution and format."""
+        self.picam2.configure(self.picam2.create_preview_configuration(main={"format": self.format, "size": self.resolution}))
+        self.picam2.start()
+    
+    def capture_frame(self):
+        """Capture a frame from the Picamera2 and return it."""
+        frame = self.picam2.capture_array()
+        return frame  # Convert from RGB to BGR for OpenCV
+    
+    def process_frame(self):
+        # Capture the current frame from the camera
+        imageFrame = self.capture_frame()
 
-    def process_frame(self, frame):
-        """Process the frame and return the image with bounding box if found"""
-        hsv_image = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        lower_limit, upper_limit = self.color_ranges[self.color_name]
-        mask = cv2.inRange(hsv_image, lower_limit, upper_limit)
+        # Convert the frame to HSV (Hue, Saturation, Value) color space
+        hsvFrame = cv2.cvtColor(imageFrame, cv2.COLOR_BGR2HSV)
 
-        mask = cv2.dilate(mask, self.kernel)  # Dilate the mask to fill holes
+        masks = {}
 
-        mask_ = Image.fromarray(mask)
-        bbox = mask_.getbbox()
+        # Generate masks for red, green, and blue colors based on the color ranges
+        for color, (lower, upper) in self.color_ranges.items():
+            mask = cv2.inRange(hsvFrame, lower, upper)
+            mask = cv2.dilate(mask, self.kernel)  # Dilate the mask
+            masks[color] = mask
 
-        if bbox is not None:
-            x1, y1, x2, y2 = bbox
-            frame = cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 5)  # Draw bounding box
+        return imageFrame, masks
+    
+    def detect_and_draw_contours(self, imageFrame, masks):
+        # Process the masks and draw contours around detected colors
+        for color, mask in masks.items():
+            contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            
+            object_count = 0  # Count objects in this frame
+            
+            for contour in contours:
+                area = cv2.contourArea(contour)
+                if area > 300:  # Only consider large enough contours
+                    object_count += 1  # Increase the count for this color
+                    x, y, w, h = cv2.boundingRect(contour)
+                    cv2.rectangle(imageFrame, (x, y), (x + w, y + h), self.get_color_for_display(color), 2)
+                    cv2.putText(imageFrame, f"{color.capitalize()} Colour", (x, y),
+                                cv2.FONT_HERSHEY_SIMPLEX, 1.0, self.get_color_for_display(color))
 
-        return frame
-
-    def get_smoothed_count(self, object_count):
-        """Smooth the object count using a moving average"""
-        self.object_counts.append(object_count)
-        return int(np.mean(self.object_counts))
-
-class CameraApp:
-    def __init__(self, color_name):
-        self.camera = Camera()
-        self.processor = ImageProcessor(color_name=color_name)
-
+            # Store the count for smoothing
+            self.object_counts[color].append(object_count)
+        
+        return imageFrame
+    
+    def get_smoothed_count(self, color):
+        # Apply moving average smoothing to the counts for each color
+        return int(np.mean(self.object_counts[color]))  # Return smoothed count as integer
+    
+    def get_color_for_display(self, color):
+        # Map color name to display color in BGR (OpenCV color format)
+        color_map = {
+            "red": (0, 0, 255),
+            "green": (0, 255, 0),
+            "blue": (255, 0, 0)
+        }
+        return color_map.get(color, (255, 255, 255))
+    
+    def show_result(self, imageFrame):
+        # Display the image with detected color regions
+        y_offset = 30  # Starting y position for displaying tally
+        
+        # Loop over all colors and their smoothed counts to display the tally
+        for color in self.color_ranges:
+            smoothed_count = self.get_smoothed_count(color)
+            cv2.putText(imageFrame, f"{color.capitalize()} Objects: {smoothed_count}", (10, y_offset),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, self.get_color_for_display(color), 3)  # Adjusted font size
+            y_offset += 40  # Move down for the next color tally
+        
+        # Show the result window
+        cv2.imshow("Multiple Color Detection in Real-Time", imageFrame)
+    
     def run(self):
-        """Main method to start the live feed and process frames"""
-        self.camera.start()
-
+        # Main loop to continuously capture frames, detect colors, and display results
         try:
             while True:
-                frame = self.camera.capture_frame()
-                processed_frame = self.processor.process_frame(frame)
+                imageFrame, masks = self.process_frame()
 
-                # Count objects in the frame
-                hsv_image = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2HSV)
-                lower_limit, upper_limit = self.processor.color_ranges[self.processor.color_name]
-                mask = cv2.inRange(hsv_image, lower_limit, upper_limit)
-                contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+                # Detect and draw contours on the image
+                imageFrame = self.detect_and_draw_contours(imageFrame, masks)
                 
-                object_count = 0
-                for contour in contours:
-                    area = cv2.contourArea(contour)
-                    if area > 300:  # Only count larger contours
-                        object_count += 1
-                
-                # Show the smoothed object count
-                smoothed_count = self.processor.get_smoothed_count(object_count)
-                cv2.putText(processed_frame, f"Detected: {smoothed_count}", (10, 30),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                # Show the result
+                self.show_result(imageFrame)
 
-                # Display the processed frame
-                cv2.imshow('Processed Frame', processed_frame)
-
-                if cv2.waitKey(1) & 0xFF == ord('q'):
+                # Break the loop if 'q' is pressed
+                if cv2.waitKey(10) & 0xFF == ord('q'):
                     break
 
         except KeyboardInterrupt:
-            print("Live feed interrupted by user.")
+            print("Detection interrupted by user.")
 
         finally:
             self.cleanup()
 
     def cleanup(self):
-        """Clean up resources"""
+        # Stop the Picamera2 and close all OpenCV windows
+        self.picam2.stop()
+        self.picam2.close()
         cv2.destroyAllWindows()
-        self.camera.stop()
 
+
+# Create a ColorDetection object and run it
 if __name__ == "__main__":
-    app = CameraApp(color_name="blue")  # Set color for detection ("red", "green", or "blue")
-    app.run()
+    color_detection = ColorDetection(smoothing_window_size=60)
+    color_detection.run()
