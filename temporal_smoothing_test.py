@@ -3,6 +3,7 @@ import cv2
 from collections import deque
 
 #NEXT smooth bounding box positions.
+#NEXT load this onto the PI by merging v1r6 type code with this.
 
 class ColorDetection:
     def __init__(self, webcam_index=0, smoothing_window_size=5):
