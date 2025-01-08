@@ -84,5 +84,5 @@ class CameraApp:
         self.camera.stop()
 
 if __name__ == "__main__":
-    app = CameraApp(color=[0, 0, 255])  # Set color for detection (blue in BGR)
+    app = CameraApp(color=[255, 0, 0]Set color for detection (blue in BGR)
     app.run()
