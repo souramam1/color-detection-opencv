@@ -28,7 +28,8 @@ class Camera:
     def capture_frame(self):
         """Capture a frame from the camera and return it in BGR format"""
         frame = self.picam2.capture_array()
-        return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR format
+        return frame
+        #return cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)  # Convert RGB to BGR format
 
     def stop(self):
         """Stop the camera"""
