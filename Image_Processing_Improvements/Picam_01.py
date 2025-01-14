@@ -82,9 +82,11 @@ class ColorDetection:
     def get_color_for_display(self, color):
         # Map color name to display color in BGR (OpenCV color format)
         color_map = {
-            "red": (0, 0, 255),
-            "green": (0, 255, 0),
-            "blue": (255, 0, 0)
+            "black": (0, 0, 0),         # Adjust for your black detection
+            "orange": (0, 165, 255),   # Hue for orange
+            "yellow": (0, 255, 255),   # Hue for yellow
+            "magenta": (255, 0, 255),  # Hue for magenta
+            "teal": (128,128,0)
         }
         return color_map.get(color, (255, 255, 255))
     
