@@ -6,7 +6,7 @@ import datetime
 app = Flask(__name__)
 
 # Initialize Firebase
-cred = credentials.Certificate("")
+cred = credentials.Certificate("C:\Users\MaiaRamambason\OneDrive - Imperial College London\Desktop\Year5\UCL_BIP\Object_Detection_Trial\color-detection-opencv\rpi4-flaskapp-firebasedatabase_altered\hybrid-phys-firebase-adminsdk-vu6l4-f7ad67ad03.json")
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://hybrid-phys-default-rtdb.europe-west1.firebasedatabase.app'
 })
