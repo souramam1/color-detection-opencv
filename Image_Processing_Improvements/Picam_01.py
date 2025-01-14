@@ -131,5 +131,5 @@ class ColorDetection:
 
 # Create a ColorDetection object and run it
 if __name__ == "__main__":
-    color_detection = ColorDetection(smoothing_window_size=60)
+    color_detection = ColorDetection(smoothing_window_size=10)
     color_detection.run()
