@@ -12,11 +12,11 @@ class ColorDetection:
         self.format = format
         self.configure_camera()
         
-        # Define lower and upper ranges for Red, Green, and Blue in HSV space
+        # Defines bounds for HSV colour detection - OpenCV uses range of 0-180 for hue instead of 360!
         self.color_ranges = {
             "black": ((0, 0, 0), (180, 255, 50)),          # Adjust for your black detection
-            "orange": ((10, 100, 100), (25, 255, 255)),   # Hue for orange
-            "yellow": ((25, 100, 100), (35, 255, 255)),   # Hue for yellow
+            "orange": ((0, 50, 50), (10, 255, 255)),   # Hue for orange
+            "yellow": ((15, 50, 50), (40, 255, 255)),   # Hue for yellow
             "magenta": ((140, 50, 50), (170, 255, 255)),  # Hue for magenta
             "teal": ((85, 50, 50), (100, 255, 255))
         }
@@ -63,7 +63,7 @@ class ColorDetection:
             
             for contour in contours:
                 area = cv2.contourArea(contour)
-                if area > 300:  # Only consider large enough contours
+                if area > 3000:  # Only consider large enough contours
                     object_count += 1  # Increase the count for this color
                     x, y, w, h = cv2.boundingRect(contour)
                     cv2.rectangle(imageFrame, (x, y), (x + w, y + h), self.get_color_for_display(color), 2)
