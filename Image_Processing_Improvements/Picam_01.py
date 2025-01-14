@@ -14,9 +14,11 @@ class ColorDetection:
         
         # Define lower and upper ranges for Red, Green, and Blue in HSV space
         self.color_ranges = {
-            "red": (np.array([136, 87, 111], np.uint8), np.array([180, 255, 255], np.uint8)),
-            "green": (np.array([25, 52, 72], np.uint8), np.array([102, 255, 255], np.uint8)),
-            "blue": (np.array([94, 80, 2], np.uint8), np.array([120, 255, 255], np.uint8))
+            "black": ((0, 0, 0), (180, 255, 50)),          # Adjust for your black detection
+            "orange": ((10, 100, 100), (25, 255, 255)),   # Hue for orange
+            "yellow": ((25, 100, 100), (35, 255, 255)),   # Hue for yellow
+            "magenta": ((140, 50, 50), (170, 255, 255)),  # Hue for magenta
+            "teal": ((85, 50, 50), (100, 255, 255))
         }
         
         self.kernel = np.ones((5, 5), "uint8")  # Kernel for dilation
