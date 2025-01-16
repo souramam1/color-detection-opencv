@@ -3,6 +3,8 @@ import cv2
 from picamera2 import Picamera2
 from collections import deque
 
+
+
 class ColorDetectionWithROI:
     def __init__(self, smoothing_window_size=5, resolution=(640, 480), format="RGB888"):
         # Initialize camera and set parameters

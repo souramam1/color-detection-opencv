@@ -3,6 +3,11 @@ import cv2
 from picamera2 import Picamera2
 from collections import deque
 
+
+#This script detects the bounds of a region of interest - defined as the largest area
+# bound by the colour green - and then only identifies colour blobs within those bounds.
+# It does not count those blobs over time.
+
 class ColorDetectionWithROI:
     def __init__(self, smoothing_window_size=5, resolution=(640, 480), format="RGB888"):
         self.picam2 = Picamera2()
@@ -96,6 +101,10 @@ class ColorDetectionWithROI:
         
         return image_frame
     
+    def get_smoothed_count(self, color):
+        # Apply moving average smoothing to the counts for each color
+        return int(np.mean(self.object_counts[color]))  # Return smoothed count as integer
+    
     def get_color_for_display(self, color):
         """Map color name to display color in BGR."""
         color_map = {
@@ -107,6 +116,16 @@ class ColorDetectionWithROI:
         return color_map.get(color, (255, 255, 255))
     
     def show_result(self, image_frame):
+        
+        # Display the image with detected color regions
+        y_offset = 30  # Starting y position for displaying tally
+        
+        # Loop over all colors and their smoothed counts to display the tally
+        for color in self.color_ranges:
+            smoothed_count = self.get_smoothed_count(color)
+            cv2.putText(image_frame, f"{color.capitalize()} Objects: {smoothed_count}", (10, y_offset),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, self.get_color_for_display(color), 3)  # Adjusted font size
+            y_offset += 40  # Move down for the next color tally
         """Display the result frame."""
         cv2.imshow("Color Detection with ROI", image_frame)
     
