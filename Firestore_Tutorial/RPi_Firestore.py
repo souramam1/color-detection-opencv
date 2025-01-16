@@ -1,27 +1,23 @@
 import firebase_admin
-from firebase_admin import credentials, firestore
+from firebase_admin import credentials
 
-# Initialize Firebase Admin
-try:
-    cred = credentials.Certificate("serviceAccountKey.json")
-    firebase_admin.initialize_app(cred)
-    print("Firebase Admin initialized successfully.")
-except Exception as e:
-    print(f"Error initializing Firebase Admin: {e}")
+cred = credentials.Certificate("path/to/serviceAccountKey.json")
+firebase_admin.initialize_app(cred)
 
-# Firestore operations
-try:
-    db = firestore.client()
 
-    # Writing data to Firestore
-    db.collection('outputDevices').document('piCamera').set({
-        'status': False
-    })
+# # Firestore operations
+# try:
+#     db = firestore.client()
 
-    db.collection('inputDevices').document('keyboardV').set({
-        'value': False
-    })
+#     # Writing data to Firestore
+#     db.collection('outputDevices').document('piCamera').set({
+#         'status': False
+#     })
 
-    print("Data written to Firestore successfully.")
-except Exception as e:
-    print(f"Error writing to Firestore: {e}")
+#     db.collection('inputDevices').document('keyboardV').set({
+#         'value': False
+#     })
+
+#     print("Data written to Firestore successfully.")
+# except Exception as e:
+#     print(f"Error writing to Firestore: {e}")
