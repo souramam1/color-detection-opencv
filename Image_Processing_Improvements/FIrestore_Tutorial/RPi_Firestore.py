@@ -6,13 +6,15 @@ from firebase_admin import credentials, firestore
 
 
 # VERY IMPORTANT - The path must be correct and accessible
-cred = credentials.Certificate("Image_Processing_Improvements/FIrestore_Tutorial/serviceAccountKey.json")  # Forward slashes
+cred = credentials.Certificate("/home/pi/Documents/color-detection-opencv/Image_Processing_Improvements/FIrestore_Tutorial/serviceAccountKey.json")  # Forward slashes
 
 # Initialize Firebase app with the credentials
 firebase_admin.initialize_app(cred)
 
 # Access Firestore
 db = firestore.client()
+
+print("Firestore connection successful!")
 
 # Write data to Firestore
 db.collection('outputDevices').document('Camera').set({
@@ -22,3 +24,5 @@ db.collection('outputDevices').document('Camera').set({
 db.collection('outputDevices').document('Screen').set({
     'status': False
 })
+
+print("Firestore write successful!")
