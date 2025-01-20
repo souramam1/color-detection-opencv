@@ -98,8 +98,9 @@ class ColorDetectionWithROI:
         return image_frame
     
     def get_smoothed_count(self, color):
-        """Get the smoothed color count using a moving average."""
-        return int(np.mean(self.object_counts[color]))  # Return smoothed count as integer
+        if not self.object_counts[color]:  # Check if the list/array is empty
+            return 0  # Or another default value
+        return int(np.mean(self.object_counts[color]))
     
     def get_color_for_display(self, color):
         """Map color name to display color in BGR."""
