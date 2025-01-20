@@ -36,15 +36,15 @@ def save_data():
 # Define the key listener
 def on_press(key):
     try:
-        if key.char == 'w':  # Press 'W' to save data
+        if key.char and key.char.lower() == 'w':  # Detect lowercase and uppercase 'W'
             save_data()
     except AttributeError:
-        pass
+        pass  # Special keys (like 'Esc') will raise this
 
 def on_release(key):
-    if key == keyboard.Key.esc:  # Press 'Esc' to exit
+    if key == keyboard.Key.esc:  # Detect 'Esc' key
         print("Exiting program.")
-        return False
+        return False  # Stop the listener
 
 # Start listening to the keyboard
 with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
