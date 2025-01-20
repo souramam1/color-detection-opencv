@@ -1,13 +1,24 @@
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# VERY IMPORTANT - THE PATH MUST BE THE RELATIVE PATH OR IT CANNOT FIND THE SDK FILE
-cred = credentials.Certificate("Image_Processing_Improvements\Firestore_Tutorial\serviceAccountKey.json")
+# Set the path to the service account key file using correct path format
+# Use double backslashes or forward slashes to avoid escape sequence issues
+
+
+# VERY IMPORTANT - The path must be correct and accessible
+cred = credentials.Certificate("Image_Processing_Improvements/FIrestore_Tutorial/serviceAccountKey.json")  # Forward slashes
+
+# Initialize Firebase app with the credentials
 firebase_admin.initialize_app(cred)
 
+# Access Firestore
 db = firestore.client()
-db.collection('outputDevices').document('Camera').set(
-    {
-        'status' : False
-    }
-)
+
+# Write data to Firestore
+db.collection('outputDevices').document('Camera').set({
+    'status': False
+})
+
+db.collection('outputDevices').document('Screen').set({
+    'status': False
+})
