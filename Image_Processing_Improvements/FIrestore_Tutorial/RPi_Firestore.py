@@ -22,3 +22,6 @@ db.collection('outputDevices').document('Camera').set({
 db.collection('outputDevices').document('Screen').set({
     'status': False
 })
+db.collection('outputDevices').document('Test_3').set({
+    'status': False
+})
