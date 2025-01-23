@@ -14,6 +14,8 @@ class DataWriter:
 
         if not os.path.exists(self.folder_name):
             os.makedirs(self.folder_name)
+        if not os.path.exists(self.image_folder):
+            os.makedirs(self.image_folder)
 
         # Initialize CSV with headers for color counts
         with open(self.file_path, mode='w', newline='') as file:
@@ -21,6 +23,8 @@ class DataWriter:
             writer.writeheader()
 
         print(f"Data will be saved to: {self.file_path}")
+        print(f"Images will be saved to: {self.image_folder}")
+        
     
     def write_data(self, color_counts):
         """Write color counts to the CSV file."""
