@@ -48,7 +48,7 @@ class ColorDetectionWithROI:
         contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
             
-            epsilon = 0.02 * cv2.arcLength(contour, True)  # Approximation accuracy
+            epsilon = 0.01 * cv2.arcLength(contour, True)  # Approximation accuracy
             approx = cv2.approxPolyDP(contour, epsilon, True)  
             print(f"measured contour length is {len(approx)} !")
             if len(approx) == 4:
