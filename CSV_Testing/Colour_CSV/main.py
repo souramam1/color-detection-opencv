@@ -7,7 +7,8 @@ def main():
     
     # Initialize data writer and start timer for saving color counts
     data_writer = DataWriter()
-    data_writer.start_timer(colour_detection)
+    data_writer.start_timer_tocsv(colour_detection)
+    data_writer.start_timer_toimage(colour_detection.picam2)
 
     # Run color detection
     colour_detection.run()
