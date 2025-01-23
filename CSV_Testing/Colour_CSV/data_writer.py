@@ -35,6 +35,7 @@ class DataWriter:
         
     def capture_and_save_image(self,camera):
         image_array = camera.capture_array()
+        self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         image_name = os.path.join(self.image_folder, f"image_{self.timestamp}.png")
         cv2.imwrite(image_name, image_array)
         print(f"Image captured and saved as: {image_name}")
