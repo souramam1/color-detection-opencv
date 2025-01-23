@@ -50,11 +50,9 @@ class ColorDetectionWithROI:
             
             epsilon = 0.02 * cv2.arcLength(contour, True)  # Approximation accuracy
             approx = cv2.approxPolyDP(contour, epsilon, True)  
-            print(f"measured contour length is {approx} !")
-            
+            print(f"measured contour length is {len(approx)} !")
             if len(approx) == 4:
                 area = cv2. contourArea(contour)  
-            
                 if area > 3000:  # Threshold for green area size
                     x, y, w, h = cv2.boundingRect(contour)
                     return (x, y, w, h)  # Return the bounding box of the largest green area
