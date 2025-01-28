@@ -113,7 +113,7 @@ class ColorDetectionWithROI:
             contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             for contour in contours:
                 area = cv2.contourArea(contour)
-                if area > 1000:  # Minimum contour area threshold
+                if 1000 < area < 3000:  # Contour area thresholds
                     cx, cy, cw, ch = cv2.boundingRect(contour)
                     bottom_y = y_offset + cy + ch
                     if bottom_y > max_y:
