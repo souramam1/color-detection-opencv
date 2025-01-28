@@ -122,21 +122,18 @@ class ColorDetectionWithROI:
                     contour_loop = (cx, cy, cw, ch)
                     contours_info.append((bottom_y, color, contour_loop))  # Add contour info as well
 
-            self.object_counts[color].append(object_count)
+            
         # Step 2: Sort contours by bottom_y (largest first)
         contours_info.sort(key=lambda x: x[0], reverse=True)
         
-        total_hours = 0
-        for color in self.color_ranges:
-            smoothed_count = self.get_smoothed_count(color)
-            total_hours += smoothed_count - 1
-        
         # Step 3: Identify max y contour and count others with smaller y
+        # TO ADD: to smooth this! Make a dequeue containing the length of the contours_info file and smooth it
+        
         if contours_info:
             max_y = contours_info[0][0]
             max_y_color = contours_info[0][1]
             max_y_contour = contours_info[0][2]
-            smaller_y_count = total_hours - 1 #len(contours_info) - 1
+            smaller_y_count = len(contours_info) - 1
             print(f"contours info is {contours_info}")
         else:
             max_y = -1
@@ -169,9 +166,6 @@ class ColorDetectionWithROI:
         suffix = "pm"
         if self.time_of_day > 12:
                 self.time_of_day -= 12
-        elif self.time_of_day <= 0:
-                self.time_of_day = 6
-                suffix = "am"
         else: 
             suffix=  "am"
         cv2.putText(image_frame, f"Time of Day: {self.time_of_day} {suffix}", (10, 100),
