@@ -8,7 +8,7 @@ from collections import deque, Counter
 # This is for the clock!
 
 class ColorDetectionWithROI:
-    def __init__(self, smoothing_window_size=5,transition_window_size=10, resolution=(640, 480), format="RGB888"):
+    def __init__(self, smoothing_window_size=5,transition_window_size=10,stability_threshold = 5, resolution=(640, 480), format="RGB888"):
         self.picam2 = Picamera2()
         self.resolution = resolution
         self.format = format
@@ -34,6 +34,10 @@ class ColorDetectionWithROI:
         
         self.last_player_colour = None
         self.last_smaller_y = None
+        
+        self.stability_threshold = stability_threshold
+        self.stable_count = 0
+        self.previous_stable_values = (None,None)
     
     def configure_camera(self):
         """Configure the camera with specified resolution and format."""
@@ -93,15 +97,19 @@ class ColorDetectionWithROI:
         
         
         
-        # Check if the player or time has changed
-        if smoothed_max_y_color != self.last_player_colour or smoothed_smaller_y_count != self.last_smaller_y:
-            print(f"UPDATE TO SEND: {(smoothed_max_y_color, smoothed_smaller_y_count)}")  # Print the time and player who just played
-            self.last_player_colour = smoothed_max_y_color  # Update last player
-            self.last_smaller_y = smoothed_smaller_y_count  # Update last time
+        # Check for stability and send updates if needed
+        if (smoothed_max_y_color, smoothed_smaller_y_count) != self.previous_stable_values:
+            self.stable_count = 0  # Reset stability counter
+        else:
+            self.stable_count += 1
 
-        # Draw the contour with the largest y-value
-        if max_y_contour is not None:
-            self.draw_max_y_contour(image_frame, max_y_contour, smoothed_max_y_color, x, y)
+        if self.stable_count >= self.stability_threshold:
+            if (smoothed_max_y_color, smoothed_smaller_y_count) != self.previous_stable_values:
+                print(f"STABLE UPDATE TO SEND: {(smoothed_max_y_color, smoothed_smaller_y_count)}")
+                self.previous_stable_values = (smoothed_max_y_color, smoothed_smaller_y_count)
+            # Draw the contour with the largest y-value
+            if max_y_contour is not None:
+                self.draw_max_y_contour(image_frame, max_y_contour, smoothed_max_y_color, x, y)
 
         # Display count of smaller-y-value contours
         
@@ -199,12 +207,17 @@ class ColorDetectionWithROI:
         cv2.arrowedLine(image_frame, (width - 50, 50), (width - 50, 150), (0, 0, 255), 3, tipLength=0.3)
         cv2.putText(image_frame, "+Y", (width - 70, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
+    def weighted_smoothing(self, deque_list):
+        """Apply weighted smoothing to prioritize recent values."""
+        weights = np.linspace(1, len(deque_list), len(deque_list))
+        smoothed_value = np.average(deque_list, weights=weights)
+        return int(smoothed_value)
 
     
     def get_smoothed_color_time(self):
         
         smoothed_max_y_colour = None
-        smoothed_smaller_y_count = 0
+        smoothed_smaller_y_count = None
         # Apply moving average smoothing to the counts for each color
         if not self.smaller_y_over_time or not self.max_colour_over_time:  # Check if the list/array is empty
             return smoothed_max_y_colour, smoothed_smaller_y_count  # Or another default value
@@ -218,7 +231,7 @@ class ColorDetectionWithROI:
             print("Deque is empty")
             
         #Calculate smoothed smaller y count
-        smoothed_smaller_y_count = int(np.mean(self.smaller_y_over_time))
+        smoothed_smaller_y_count = self.weighted_smoothing(self.smaller_y_over_time)
             
         return smoothed_max_y_colour, smoothed_smaller_y_count
     
