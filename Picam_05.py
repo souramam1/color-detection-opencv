@@ -184,7 +184,9 @@ class ColorDetectionWithROI:
 
     def display_time_of_day(self, image_frame, smoothed_smaller_y_count):
         """Display the count of contours with smaller y-values."""
-        self.time_of_day = smoothed_smaller_y_count
+        
+        if smoothed_smaller_y_count is None:
+            return 0
         display_time = smoothed_smaller_y_count + 6
         suffix = "pm"
         if display_time > 12:
@@ -272,5 +274,5 @@ class ColorDetectionWithROI:
 
 # Run the program
 if __name__ == "__main__":
-    color_detection = ColorDetectionWithROI(smoothing_window_size=10,transition_window_size=30)
+    color_detection = ColorDetectionWithROI(smoothing_window_size=10,transition_window_size=10,stability_threshold=5)
     color_detection.run()
