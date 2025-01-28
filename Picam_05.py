@@ -89,7 +89,8 @@ class ColorDetectionWithROI:
             self.draw_max_y_contour(image_frame, max_y_contour, max_y_color, x, y)
 
         # Display count of smaller-y-value contours
-        self.display_smaller_y_count(image_frame, smaller_y_count)
+        
+        self.display_time_of_day(image_frame, smaller_y_count)
 
         # Draw the green ROI box
         self.draw_roi_box(image_frame, x, y, w, h)
@@ -146,9 +147,15 @@ class ColorDetectionWithROI:
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.get_color_for_display(max_y_color), 2)
 
 
-    def display_smaller_y_count(self, image_frame, smaller_y_count):
+    def display_time_of_day(self, image_frame, smaller_y_count):
         """Display the count of contours with smaller y-values."""
-        cv2.putText(image_frame, f"Contours below Max Y: {smaller_y_count}", (10, 100),
+        time_of_day = smaller_y_count + 6
+        suffix = "pm"
+        if time_of_day > 12:
+                time_of_day -= 12
+        else: 
+            suffix=  "am"
+        cv2.putText(image_frame, f"Time of Day: {time_of_day} {suffix}", (10, 100),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
 
