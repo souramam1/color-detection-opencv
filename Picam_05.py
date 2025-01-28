@@ -96,20 +96,21 @@ class ColorDetectionWithROI:
         smoothed_max_y_color, smoothed_smaller_y_count = self.get_smoothed_color_time()
         
         
-        
-        # Check for stability and send updates if needed
-        if (smoothed_max_y_color, smoothed_smaller_y_count) != self.previous_stable_values:
-            self.stable_count = 0  # Reset stability counter
-        else:
-            self.stable_count += 1
 
+        # Check if the player or time has changed
+        if (smoothed_max_y_color, smoothed_smaller_y_count) != self.previous_stable_values:
+            self.stable_count = 0  # Reset stability counter (values have changed)
+        else:
+            self.stable_count += 1  # Increment stability counter (values are the same)
+
+        # If stable for enough frames, update and send
         if self.stable_count >= self.stability_threshold:
+            print("stable count has reached the threshold")
             if (smoothed_max_y_color, smoothed_smaller_y_count) != self.previous_stable_values:
                 print(f"STABLE UPDATE TO SEND: {(smoothed_max_y_color, smoothed_smaller_y_count)}")
                 self.previous_stable_values = (smoothed_max_y_color, smoothed_smaller_y_count)
-            # Draw the contour with the largest y-value
-            if max_y_contour is not None:
-                self.draw_max_y_contour(image_frame, max_y_contour, smoothed_max_y_color, x, y)
+                self.stable_count = 0  # Reset stability counter after sending data
+
 
         # Display count of smaller-y-value contours
         
