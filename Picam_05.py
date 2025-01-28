@@ -1,0 +1,212 @@
+import numpy as np
+import cv2
+from picamera2 import Picamera2
+from collections import deque
+
+
+# This will be the same as PICAM 02 but adapted to count the most recent colour and total tokens in time along a time bar
+# This is for the clock!
+
+class ColorDetectionWithROI:
+    def __init__(self, smoothing_window_size=5, resolution=(640, 480), format="RGB888"):
+        self.picam2 = Picamera2()
+        self.resolution = resolution
+        self.format = format
+        self.configure_camera()
+        
+        # Define HSV range for green color (adjust if needed)
+        self.green_range = ((40, 50, 50), (80, 255, 255))  # HSV range for green
+        
+        # Define color ranges for contour detection
+        self.color_ranges = {
+            "orange": ((0, 50, 50), (10, 255, 255)),
+            "yellow": ((15, 50, 50), (40, 255, 255)),
+            "magenta": ((140, 50, 50), (170, 255, 255)),
+            "teal": ((85, 50, 50), (100, 255, 255))
+        }
+        
+        self.kernel = np.ones((5, 5), "uint8")
+        self.smoothing_window_size = smoothing_window_size
+        self.object_counts = {color: deque(maxlen=smoothing_window_size) for color in self.color_ranges}
+    
+    def configure_camera(self):
+        """Configure the camera with specified resolution and format."""
+        self.picam2.configure(self.picam2.create_preview_configuration(main={"format": self.format, "size": self.resolution}))
+        self.picam2.start()
+    
+    def capture_frame(self):
+        """Capture a frame from the Picamera2 and return it."""
+        frame = self.picam2.capture_array()
+        return frame
+    
+    def detect_green_roi(self, hsv_frame):
+        """Detect the green ROI in the frame."""
+        mask = cv2.inRange(hsv_frame, *self.green_range)
+        mask = cv2.dilate(mask, self.kernel)
+        
+        contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if area > 3000:  # Threshold for green area size
+                x, y, w, h = cv2.boundingRect(contour)
+                return (x, y, w, h)  # Return the bounding box of the largest green area
+        return None  # No ROI detected
+    
+    def process_frame(self):
+        # Capture the current frame and convert to HSV
+        image_frame = self.capture_frame()
+        hsv_frame = cv2.cvtColor(image_frame, cv2.COLOR_BGR2HSV)
+        
+        # Detect green ROI
+        roi = self.detect_green_roi(hsv_frame)
+        masks = {}
+        
+        # If a green ROI is detected, process colors within the ROI
+        if roi:
+            x, y, w, h = roi
+            roi_hsv = hsv_frame[y:y+h, x:x+w]  # Crop HSV frame to ROI
+            
+            # Generate masks for the defined colors within the ROI
+            for color, (lower, upper) in self.color_ranges.items():
+                mask = cv2.inRange(roi_hsv, lower, upper)
+                mask = cv2.dilate(mask, self.kernel)
+                masks[color] = mask
+            
+            return image_frame, masks, roi
+        else:
+            return image_frame, {}, None
+    
+    def detect_and_draw_contours(self, image_frame, masks, roi):
+        if not roi:
+            return image_frame
+
+        x, y, w, h = roi
+        max_y, max_y_contour, max_y_color = self.find_max_y_contour(masks, x, y)
+        smaller_y_count = self.count_smaller_y_contours(masks, max_y, x, y)
+
+        # Draw the contour with the largest y-value
+        if max_y_contour:
+            self.draw_max_y_contour(image_frame, max_y_contour, max_y_color, x, y)
+
+        # Display count of smaller-y-value contours
+        self.display_smaller_y_count(image_frame, smaller_y_count)
+
+        # Draw the green ROI box
+        self.draw_roi_box(image_frame, x, y, w, h)
+
+        # Add arrow to indicate direction of increasing y
+        self.draw_y_axis_arrow(image_frame)
+
+        return image_frame
+
+
+    def find_max_y_contour(self, masks, x_offset, y_offset):
+        """Find the contour with the maximum y-coordinate."""
+        max_y = -1
+        max_y_contour = None
+        max_y_color = None
+
+        for color, mask in masks.items():
+            contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            for contour in contours:
+                area = cv2.contourArea(contour)
+                if area > 1000:  # Minimum contour area threshold
+                    cx, cy, cw, ch = cv2.boundingRect(contour)
+                    bottom_y = y_offset + cy + ch
+                    if bottom_y > max_y:
+                        max_y = bottom_y
+                        max_y_contour = (cx, cy, cw, ch)
+                        max_y_color = color
+
+        return max_y, max_y_contour, max_y_color
+
+
+    def count_smaller_y_contours(self, masks, max_y, x_offset, y_offset):
+        """Count how many contours have a smaller y-coordinate than max_y."""
+        smaller_y_count = 0
+        for mask in masks.values():
+            contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            for contour in contours:
+                area = cv2.contourArea(contour)
+                if area > 1000:  # Minimum contour area threshold
+                    cx, cy, cw, ch = cv2.boundingRect(contour)
+                    bottom_y = y_offset + cy + ch
+                    if bottom_y < max_y:
+                        smaller_y_count += 1
+
+        return smaller_y_count
+
+
+    def draw_max_y_contour(self, image_frame, max_y_contour, max_y_color, x_offset, y_offset):
+        """Draw the contour with the largest y-coordinate."""
+        cx, cy, cw, ch = max_y_contour
+        cv2.rectangle(image_frame, (x_offset + cx, y_offset + cy), (x_offset + cx + cw, y_offset + cy + ch),
+                    self.get_color_for_display(max_y_color), 2)
+        cv2.putText(image_frame, f"{max_y_color.capitalize()} (Max Y)", (x_offset + cx, y_offset + cy - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.get_color_for_display(max_y_color), 2)
+
+
+    def display_smaller_y_count(self, image_frame, smaller_y_count):
+        """Display the count of contours with smaller y-values."""
+        cv2.putText(image_frame, f"Contours below Max Y: {smaller_y_count}", (10, 100),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+
+
+    def draw_roi_box(self, image_frame, x, y, w, h):
+        """Draw the green ROI box."""
+        cv2.rectangle(image_frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv2.putText(image_frame, "ROI", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+
+
+    def draw_y_axis_arrow(self, image_frame):
+        """Draw an arrow indicating the direction of the y-axis."""
+        height, width, _ = image_frame.shape
+        cv2.arrowedLine(image_frame, (width - 50, 50), (width - 50, 150), (0, 0, 255), 3, tipLength=0.3)
+        cv2.putText(image_frame, "+Y", (width - 70, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+
+    
+    def get_smoothed_count(self, color):
+        # Apply moving average smoothing to the counts for each color
+        
+        if not self.object_counts[color]:  # Check if the list/array is empty
+            return 0  # Or another default value
+        return int(np.mean(self.object_counts[color]))
+    
+    def get_color_for_display(self, color):
+        """Map color name to display color in BGR."""
+        color_map = {
+            "orange": (0, 165, 255),
+            "yellow": (0, 255, 255),
+            "magenta": (255, 0, 255),
+            "teal": (255, 128, 0)
+        }
+        return color_map.get(color, (255, 255, 255))
+    
+    def show_result(self, image_frame):
+        """Display the processed frame."""
+        cv2.imshow("Color Detection with ROI", image_frame)
+
+    
+    def run(self):
+        try:
+            while True:
+                image_frame, masks, roi = self.process_frame()
+                image_frame = self.detect_and_draw_contours(image_frame, masks, roi)
+                self.show_result(image_frame)
+                
+                if cv2.waitKey(10) & 0xFF == ord('q'):
+                    break
+        finally:
+            self.cleanup()
+    
+    def cleanup(self):
+        self.picam2.stop()
+        self.picam2.close()
+        cv2.destroyAllWindows()
+
+
+# Run the program
+if __name__ == "__main__":
+    color_detection = ColorDetectionWithROI(smoothing_window_size=10)
+    color_detection.run()
