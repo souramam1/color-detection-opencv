@@ -30,6 +30,9 @@ class ColorDetectionWithROI:
         self.object_counts = {color: deque(maxlen=smoothing_window_size) for color in self.color_ranges}
         self.time_of_day = -1
         self.player_colour = None
+        
+        self.last_player = None
+        self.last_time = None
     
     def configure_camera(self):
         """Configure the camera with specified resolution and format."""
@@ -85,6 +88,11 @@ class ColorDetectionWithROI:
         x, y, w, h = roi
         max_y, max_y_contour, max_y_color,smaller_y_count = self.find_contours_with_y_and_color(masks, x, y)
         
+        # Check if the player or time has changed
+        if max_y_color != self.last_player or self.time_of_day != smaller_y_count:
+            print(f"UPDATE TO SEND: {(self.time_of_day, max_y_color)}")  # Print the time and player who just played
+            self.last_player = max_y_color  # Update last player
+            self.last_time = self.time_of_day  # Update last time
 
         # Draw the contour with the largest y-value
         if max_y_contour is not None:
@@ -134,7 +142,7 @@ class ColorDetectionWithROI:
             max_y_color = contours_info[0][1]
             max_y_contour = contours_info[0][2]
             smaller_y_count = len(contours_info) - 1
-            print(f"contours info is {contours_info}")
+            #print(f"contours info is {contours_info}")
         else:
             max_y = -1
             max_y_color = None
@@ -162,13 +170,14 @@ class ColorDetectionWithROI:
 
     def display_time_of_day(self, image_frame, smaller_y_count):
         """Display the count of contours with smaller y-values."""
-        self.time_of_day = smaller_y_count + 6
+        self.time_of_day = smaller_y_count
+        display_time = smaller_y_count + 6
         suffix = "pm"
-        if self.time_of_day > 12:
-                self.time_of_day -= 12
+        if display_time > 12:
+                display_time -= 12
         else: 
             suffix=  "am"
-        cv2.putText(image_frame, f"Time of Day: {self.time_of_day} {suffix}", (10, 100),
+        cv2.putText(image_frame, f"Time of Day: {display_time} {suffix}", (10, 100),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
 
