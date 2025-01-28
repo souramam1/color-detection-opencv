@@ -36,8 +36,8 @@ class ColorDetectionWithROI:
         self.last_smaller_y = None
         
         self.stability_threshold = stability_threshold
-        self.stable_count = 0
-        self.previous_stable_values = (None,None)
+        self.stability_colour_time = deque(maxlen=self.stability_threshold)
+        self.stability_small_y_time = deque(maxlen=self.stability_threshold)
     
     def configure_camera(self):
         """Configure the camera with specified resolution and format."""
@@ -95,26 +95,17 @@ class ColorDetectionWithROI:
         
         smoothed_max_y_color, smoothed_smaller_y_count = self.get_smoothed_color_time()
         
-        
+        if self.stability_of_colour_and_time(smoothed_max_y_color,smoothed_smaller_y_count):
+            print(f"STABLE UPDATE TO SEND: {(smoothed_max_y_color, smoothed_smaller_y_count)}")
+                # Display count of smaller-y-value contours
+            self.display_time_of_day(image_frame, smoothed_smaller_y_count)   
+            # Draw the contour with the largest y-value
+            if max_y_contour is not None:
+                self.draw_max_y_contour(image_frame, max_y_contour, smoothed_max_y_color, x, y)
 
-        # Check if the player or time has changed
-        if (smoothed_max_y_color, smoothed_smaller_y_count) != self.previous_stable_values:
-            self.stable_count = 0  # Reset stability counter (values have changed)
-        else:
-            self.stable_count += 1  # Increment stability counter (values are the same)
-
-        # If stable for enough frames, update and send
-        if self.stable_count >= self.stability_threshold:
-            print("stable count has reached the threshold")
-            if (smoothed_max_y_color, smoothed_smaller_y_count) != self.previous_stable_values:
-                print(f"STABLE UPDATE TO SEND: {(smoothed_max_y_color, smoothed_smaller_y_count)}")
-                self.previous_stable_values = (smoothed_max_y_color, smoothed_smaller_y_count)
-                self.stable_count = 0  # Reset stability counter after sending data
-
-
-        # Display count of smaller-y-value contours
-        
-        self.display_time_of_day(image_frame, smoothed_smaller_y_count)
+            
+            
+            
 
         # Draw the green ROI box
         self.draw_roi_box(image_frame, x, y, w, h)
@@ -210,6 +201,32 @@ class ColorDetectionWithROI:
         cv2.arrowedLine(image_frame, (width - 50, 50), (width - 50, 150), (0, 0, 255), 3, tipLength=0.3)
         cv2.putText(image_frame, "+Y", (width - 70, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
+    def all_values_same(self,deque_obj):
+        return len(set(deque_obj)) == 1
+    
+    def stability_of_colour_and_time(self,smoothed_max_y_colour,smoothed_smaller_y_count):
+        # this will check if all the values of the stability queues for colour and time are
+        # the same, if they are AND they are not the same as previous sent values, THEN we will send
+        self.stability_colour_time.append(smoothed_max_y_colour)
+        self.stability_small_y_time.append(smoothed_smaller_y_count)
+        
+        if self.all_values_same(self.stability_colour_time) and self.all_values_same(self.stability_small_y_time):
+            if self.stability_colour_time[-1] != self.last_player_colour and self.stability_small_y_time[-1] != self.last_smaller_y:
+                self.last_player_colour = smoothed_max_y_colour
+                self.last_smaller_y = smoothed_smaller_y_count
+                print(f"STABLE AND CHANGED to colour: {smoothed_max_y_colour}, number: {smoothed_smaller_y_count}")
+                return 1
+            else:
+                print("STABLE BUT NO CHANGE")
+        else: 
+            
+            print("NOT STABLE")
+            
+    
+        return 0
+    
+           
+
     def weighted_smoothing(self, deque_list):
         """Apply weighted smoothing to prioritize recent values."""
         weights = np.linspace(1, len(deque_list), len(deque_list))
@@ -229,7 +246,7 @@ class ColorDetectionWithROI:
         most_common = counter.most_common(1)
         if most_common:
             smoothed_max_y_colour = most_common[0][0]  # Extract the string
-            print(f"Most present string: {smoothed_max_y_colour}")
+            #print(f"Most present string: {smoothed_max_y_colour}")
         else:
             print("Deque is empty")
             
