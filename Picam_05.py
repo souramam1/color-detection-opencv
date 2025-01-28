@@ -96,8 +96,8 @@ class ColorDetectionWithROI:
         smoothed_max_y_color, smoothed_smaller_y_count = self.get_smoothed_color_time()
         
         if self.stability_of_colour_and_time(smoothed_max_y_color,smoothed_smaller_y_count):
-            print(f"STABLE UPDATE TO SEND: {(smoothed_max_y_color, smoothed_smaller_y_count)}")
-                # Display count of smaller-y-value contours
+            #print("will display")
+            # Display count of smaller-y-value contours
             self.display_time_of_day(image_frame, smoothed_smaller_y_count)   
             # Draw the contour with the largest y-value
             if max_y_contour is not None:
@@ -133,7 +133,7 @@ class ColorDetectionWithROI:
                     bottom_y = y_offset + cy + ch
                     contour_loop = (cx, cy, cw, ch)
                     contours_info.append((bottom_y, color, contour_loop))  # Add contour info as well
-                    self.max_colour_over_time.append(color)
+
 
             
         # Step 2: Sort contours by bottom_y (largest first)
@@ -148,7 +148,13 @@ class ColorDetectionWithROI:
             max_y_contour = contours_info[0][2]
             smaller_y_count = len(contours_info) - 1
             self.smaller_y_over_time.append(smaller_y_count)
-            #print(f"contours info is {contours_info}")
+            self.max_colour_over_time.append(max_y_color)
+            #print(f"the contents of max_colour_over_time are: {self.max_colour_over_time}")
+            #print("detected contour group")
+            #for contour in contours_info:
+                #print(contour[1])
+            #print(f"contour: {contours_info}")
+            
         else:
             max_y = -1
             max_y_color = None
@@ -168,8 +174,8 @@ class ColorDetectionWithROI:
         """Draw the contour with the largest y-coordinate."""
         cx, cy, cw, ch = max_y_contour
         cv2.rectangle(image_frame, (x_offset + cx, y_offset + cy), (x_offset + cx + cw, y_offset + cy + ch),
-                    self.get_color_for_display(max_y_color), 2)
-        cv2.putText(image_frame, f"{max_y_color.capitalize()} (Player Turn)", (x_offset + cx, y_offset + cy - 10),
+                    self.get_color_for_display(self.stability_colour_time[-1]), 2)
+        cv2.putText(image_frame, f"{self.stability_colour_time[-1].capitalize()} (Player Turn)", (x_offset + cx, y_offset + cy - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.get_color_for_display(max_y_color), 2)
         
 
@@ -211,15 +217,16 @@ class ColorDetectionWithROI:
         self.stability_small_y_time.append(smoothed_smaller_y_count)
         
         if self.all_values_same(self.stability_colour_time) and self.all_values_same(self.stability_small_y_time):
-            if self.stability_colour_time[-1] != self.last_player_colour and self.stability_small_y_time[-1] != self.last_smaller_y:
+            if self.stability_colour_time[-1] != self.last_player_colour or self.stability_small_y_time[-1] != self.last_smaller_y:
                 self.last_player_colour = smoothed_max_y_colour
                 self.last_smaller_y = smoothed_smaller_y_count
-                print(f"STABLE AND CHANGED to colour: {smoothed_max_y_colour}, number: {smoothed_smaller_y_count}")
-                return 1
+                print(f"STABLE AND CHANGED to colour: {self.stability_colour_time[-1]}, number: {self.stability_small_y_time[-1]}")
+                return 0
             else:
-                print("STABLE BUT NO CHANGE")
+                #print("STABLE BUT NO CHANGE")
+                return 1
         else: 
-            
+            pass
             print("NOT STABLE")
             
     
@@ -292,5 +299,5 @@ class ColorDetectionWithROI:
 
 # Run the program
 if __name__ == "__main__":
-    color_detection = ColorDetectionWithROI(smoothing_window_size=10,transition_window_size=10,stability_threshold=5)
+    color_detection = ColorDetectionWithROI(smoothing_window_size=10,transition_window_size=10,stability_threshold=10)
     color_detection.run()
