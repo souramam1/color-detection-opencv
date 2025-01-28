@@ -83,8 +83,8 @@ class ColorDetectionWithROI:
             return image_frame
 
         x, y, w, h = roi
-        max_y, max_y_contour, max_y_color = self.find_max_y_contour(masks, x, y)
-        smaller_y_count = self.count_smaller_y_contours(masks, max_y, x, y)
+        max_y, max_y_contour, max_y_color,smaller_y_count = self.find_contours_with_y_and_color(masks, x, y)
+        
 
         # Draw the contour with the largest y-value
         if max_y_contour:
@@ -101,14 +101,15 @@ class ColorDetectionWithROI:
         self.draw_y_axis_arrow(image_frame)
 
         return image_frame
-
-
-    def find_max_y_contour(self, masks, x_offset, y_offset):
-        """Find the contour with the maximum y-coordinate."""
-        max_y = -1
-        max_y_contour = None
-        max_y_color = None
-
+    
+    def find_contours_with_y_and_color(self, masks, x_offset, y_offset):
+        """
+        Find all valid contours and calculate the one with the maximum y-coordinate,
+        its color, and the count of other contours with a smaller y-coordinate.
+        """
+        contours_info = []  # List to store info about valid contours: (bottom_y, color, contour)
+        
+        # Step 1: Collect all valid contours
         for color, mask in masks.items():
             contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             for contour in contours:
@@ -116,29 +117,23 @@ class ColorDetectionWithROI:
                 if 1000 < area < 3000:  # Contour area thresholds
                     cx, cy, cw, ch = cv2.boundingRect(contour)
                     bottom_y = y_offset + cy + ch
-                    if bottom_y > max_y:
-                        max_y = bottom_y
-                        max_y_contour = (cx, cy, cw, ch)
-                        max_y_color = color
-                        self.player_colour = color
+                    contours_info.append((bottom_y, color, contour))  # Add contour info as well
 
-        return max_y, max_y_contour, max_y_color
+        # Step 2: Sort contours by bottom_y (largest first)
+        contours_info.sort(key=lambda x: x[0], reverse=True)
+        
+        # Step 3: Identify max y contour and count others with smaller y
+        max_y = contours_info[0][0] if contours_info else -1
+        max_y_color = contours_info[0][1] if contours_info else None
+        max_y_contour = contours_info[0][2] if contours_info else None
+        smaller_y_count = len(contours_info) - 1 if contours_info else 0
 
+        # Step 4: Optional: Store the color of the max y contour
+        if max_y_color:
+            self.player_colour = max_y_color
 
-    def count_smaller_y_contours(self, masks, max_y, x_offset, y_offset):
-        """Count how many contours have a smaller y-coordinate than max_y."""
-        smaller_y_count = 0
-        for mask in masks.values():
-            contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            for contour in contours:
-                area = cv2.contourArea(contour)
-                if area > 1000:  # Minimum contour area threshold
-                    cx, cy, cw, ch = cv2.boundingRect(contour)
-                    bottom_y = y_offset + cy + ch
-                    if bottom_y < max_y:
-                        smaller_y_count += 1
+        return max_y, max_y_contour, max_y_color, smaller_y_count
 
-        return smaller_y_count
 
 
     def draw_max_y_contour(self, image_frame, max_y_contour, max_y_color, x_offset, y_offset):
