@@ -87,7 +87,7 @@ class ColorDetectionWithROI:
         
 
         # Draw the contour with the largest y-value
-        if max_y_contour:
+        if max_y_contour is not None:
             self.draw_max_y_contour(image_frame, max_y_contour, max_y_color, x, y)
 
         # Display count of smaller-y-value contours
@@ -117,7 +117,8 @@ class ColorDetectionWithROI:
                 if 1000 < area < 3000:  # Contour area thresholds
                     cx, cy, cw, ch = cv2.boundingRect(contour)
                     bottom_y = y_offset + cy + ch
-                    contours_info.append((bottom_y, color, contour))  # Add contour info as well
+                    contour_loop = (cx, cy, cw, ch)
+                    contours_info.append((bottom_y, color, contour_loop))  # Add contour info as well
 
         # Step 2: Sort contours by bottom_y (largest first)
         contours_info.sort(key=lambda x: x[0], reverse=True)
@@ -128,6 +129,7 @@ class ColorDetectionWithROI:
             max_y_color = contours_info[0][1]
             max_y_contour = contours_info[0][2]
             smaller_y_count = len(contours_info) - 1
+            print(f"contours info is {contours_info}")
         else:
             max_y = -1
             max_y_color = None
