@@ -203,7 +203,7 @@ class ColorDetectionWithROI:
     
     def get_smoothed_color_time(self):
         # Apply moving average smoothing to the counts for each color
-        if not self.time_over_time or not self.max_colour_over_time:  # Check if the list/array is empty
+        if not self.smaller_y_over_time or not self.max_colour_over_time:  # Check if the list/array is empty
             return 0  # Or another default value
         else:
             counter = Counter(self.max_colour_over_time)
