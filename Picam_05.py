@@ -202,18 +202,23 @@ class ColorDetectionWithROI:
 
     
     def get_smoothed_color_time(self):
+        
+        smoothed_max_y_colour = None
+        smoothed_smaller_y_count = 0
         # Apply moving average smoothing to the counts for each color
         if not self.smaller_y_over_time or not self.max_colour_over_time:  # Check if the list/array is empty
-            return 0  # Or another default value
+            return smoothed_max_y_colour, smoothed_smaller_y_count  # Or another default value
+        
+        counter = Counter(self.max_colour_over_time)
+        most_common = counter.most_common(1)
+        if most_common:
+            smoothed_max_y_colour = most_common[0][0]  # Extract the string
+            print(f"Most present string: {smoothed_max_y_colour}")
         else:
-            counter = Counter(self.max_colour_over_time)
-            most_common = counter.most_common(1)
-            if most_common:
-                smoothed_max_y_colour = most_common[0][0]  # Extract the string
-                print(f"Most present string: {smoothed_max_y_colour}")
-            else:
-                print("Deque is empty")
-            smoothed_smaller_y_count = int(np.mean(self.smaller_y_over_time))
+            print("Deque is empty")
+            
+        #Calculate smoothed smaller y count
+        smoothed_smaller_y_count = int(np.mean(self.smaller_y_over_time))
             
         return smoothed_max_y_colour, smoothed_smaller_y_count
     
