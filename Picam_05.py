@@ -1,14 +1,14 @@
 import numpy as np
 import cv2
 from picamera2 import Picamera2
-from collections import deque
+from collections import deque, Counter
 
 
 # This will be the same as PICAM 02 but adapted to count the most recent colour and total tokens in time along a time bar
 # This is for the clock!
 
 class ColorDetectionWithROI:
-    def __init__(self, smoothing_window_size=5, resolution=(640, 480), format="RGB888"):
+    def __init__(self, smoothing_window_size=5,transition_window_size=10, resolution=(640, 480), format="RGB888"):
         self.picam2 = Picamera2()
         self.resolution = resolution
         self.format = format
@@ -28,11 +28,12 @@ class ColorDetectionWithROI:
         self.kernel = np.ones((5, 5), "uint8")
         self.smoothing_window_size = smoothing_window_size
         self.object_counts = {color: deque(maxlen=smoothing_window_size) for color in self.color_ranges}
-        self.time_of_day = -1
-        self.player_colour = None
         
-        self.last_player = None
-        self.last_time = None
+        self.smaller_y_over_time = deque(maxlen=transition_window_size)
+        self.max_colour_over_time = deque(maxlen=transition_window_size)
+        
+        self.last_player_colour = None
+        self.last_smaller_y = None
     
     def configure_camera(self):
         """Configure the camera with specified resolution and format."""
@@ -86,21 +87,25 @@ class ColorDetectionWithROI:
             return image_frame
 
         x, y, w, h = roi
-        max_y, max_y_contour, max_y_color,smaller_y_count = self.find_contours_with_y_and_color(masks, x, y)
+        max_y, max_y_contour, max_y_color, smaller_y_count = self.find_contours_with_y_and_color(masks, x, y)
+        
+        smoothed_max_y_color, smoothed_smaller_y_count = self.get_smoothed_color_time()
+        
+        
         
         # Check if the player or time has changed
-        if max_y_color != self.last_player or self.time_of_day != smaller_y_count:
-            print(f"UPDATE TO SEND: {(self.time_of_day, max_y_color)}")  # Print the time and player who just played
-            self.last_player = max_y_color  # Update last player
-            self.last_time = self.time_of_day  # Update last time
+        if smoothed_max_y_color != self.last_player_colour or smoothed_smaller_y_count != self.last_smaller_y:
+            print(f"UPDATE TO SEND: {(smoothed_max_y_color, smoothed_smaller_y_count)}")  # Print the time and player who just played
+            self.last_player_colour = smoothed_max_y_color  # Update last player
+            self.last_smaller_y = smoothed_smaller_y_count  # Update last time
 
         # Draw the contour with the largest y-value
         if max_y_contour is not None:
-            self.draw_max_y_contour(image_frame, max_y_contour, max_y_color, x, y)
+            self.draw_max_y_contour(image_frame, max_y_contour, smoothed_max_y_color, x, y)
 
         # Display count of smaller-y-value contours
         
-        self.display_time_of_day(image_frame, smaller_y_count)
+        self.display_time_of_day(image_frame, smoothed_smaller_y_count)
 
         # Draw the green ROI box
         self.draw_roi_box(image_frame, x, y, w, h)
@@ -117,18 +122,18 @@ class ColorDetectionWithROI:
         """
         contours_info = []  # List to store info about valid contours: (bottom_y, color, contour)
         
-        object_count = 0
+        
         # Step 1: Collect all valid contours
         for color, mask in masks.items():
             contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             for contour in contours:
                 area = cv2.contourArea(contour)
                 if 1000 < area < 3000:  # Contour area thresholds
-                    object_count += 1
                     cx, cy, cw, ch = cv2.boundingRect(contour)
                     bottom_y = y_offset + cy + ch
                     contour_loop = (cx, cy, cw, ch)
                     contours_info.append((bottom_y, color, contour_loop))  # Add contour info as well
+                    self.max_colour_over_time.append(color)
 
             
         # Step 2: Sort contours by bottom_y (largest first)
@@ -142,6 +147,7 @@ class ColorDetectionWithROI:
             max_y_color = contours_info[0][1]
             max_y_contour = contours_info[0][2]
             smaller_y_count = len(contours_info) - 1
+            self.smaller_y_over_time.append(smaller_y_count)
             #print(f"contours info is {contours_info}")
         else:
             max_y = -1
@@ -168,10 +174,10 @@ class ColorDetectionWithROI:
         
 
 
-    def display_time_of_day(self, image_frame, smaller_y_count):
+    def display_time_of_day(self, image_frame, smoothed_smaller_y_count):
         """Display the count of contours with smaller y-values."""
-        self.time_of_day = smaller_y_count
-        display_time = smaller_y_count + 6
+        self.time_of_day = smoothed_smaller_y_count
+        display_time = smoothed_smaller_y_count + 6
         suffix = "pm"
         if display_time > 12:
                 display_time -= 12
@@ -195,12 +201,23 @@ class ColorDetectionWithROI:
 
 
     
-    def get_smoothed_count(self, color):
+    def get_smoothed_color_time(self):
         # Apply moving average smoothing to the counts for each color
-        
-        if not self.object_counts[color]:  # Check if the list/array is empty
+        if not self.time_over_time or not self.max_colour_over_time:  # Check if the list/array is empty
             return 0  # Or another default value
-        return int(np.mean(self.object_counts[color]))
+        else:
+            counter = Counter(self.max_colour_over_time)
+            most_common = counter.most_common(1)
+            if most_common:
+                smoothed_max_y_colour = most_common[0][0]  # Extract the string
+                print(f"Most present string: {smoothed_max_y_colour}")
+            else:
+                print("Deque is empty")
+            smoothed_smaller_y_count = int(np.mean(self.smaller_y_over_time))
+            
+        return smoothed_max_y_colour, smoothed_smaller_y_count
+    
+        
     
     def get_color_for_display(self, color):
         """Map color name to display color in BGR."""
@@ -237,5 +254,5 @@ class ColorDetectionWithROI:
 
 # Run the program
 if __name__ == "__main__":
-    color_detection = ColorDetectionWithROI(smoothing_window_size=10)
+    color_detection = ColorDetectionWithROI(smoothing_window_size=10,transition_window_size=30)
     color_detection.run()
