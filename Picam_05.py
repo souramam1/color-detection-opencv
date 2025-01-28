@@ -28,6 +28,8 @@ class ColorDetectionWithROI:
         self.kernel = np.ones((5, 5), "uint8")
         self.smoothing_window_size = smoothing_window_size
         self.object_counts = {color: deque(maxlen=smoothing_window_size) for color in self.color_ranges}
+        self.time_of_day = -1
+        self.player_colour = None
     
     def configure_camera(self):
         """Configure the camera with specified resolution and format."""
@@ -118,6 +120,7 @@ class ColorDetectionWithROI:
                         max_y = bottom_y
                         max_y_contour = (cx, cy, cw, ch)
                         max_y_color = color
+                        self.player_colour = color
 
         return max_y, max_y_contour, max_y_color
 
@@ -143,19 +146,20 @@ class ColorDetectionWithROI:
         cx, cy, cw, ch = max_y_contour
         cv2.rectangle(image_frame, (x_offset + cx, y_offset + cy), (x_offset + cx + cw, y_offset + cy + ch),
                     self.get_color_for_display(max_y_color), 2)
-        cv2.putText(image_frame, f"{max_y_color.capitalize()} (Max Y)", (x_offset + cx, y_offset + cy - 10),
+        cv2.putText(image_frame, f"{max_y_color.capitalize()} (Player Turn)", (x_offset + cx, y_offset + cy - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.get_color_for_display(max_y_color), 2)
+        
 
 
     def display_time_of_day(self, image_frame, smaller_y_count):
         """Display the count of contours with smaller y-values."""
-        time_of_day = smaller_y_count + 6
+        self.time_of_day = smaller_y_count + 6
         suffix = "pm"
-        if time_of_day > 12:
-                time_of_day -= 12
+        if self.time_of_day > 12:
+                self.time_of_day -= 12
         else: 
             suffix=  "am"
-        cv2.putText(image_frame, f"Time of Day: {time_of_day} {suffix}", (10, 100),
+        cv2.putText(image_frame, f"Time of Day: {self.time_of_day} {suffix}", (10, 100),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
 
