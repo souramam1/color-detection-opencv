@@ -109,33 +109,42 @@ class ColorDetectionWithROI:
         """
         contours_info = []  # List to store info about valid contours: (bottom_y, color, contour)
         
+        object_count = 0
         # Step 1: Collect all valid contours
         for color, mask in masks.items():
             contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             for contour in contours:
                 area = cv2.contourArea(contour)
                 if 1000 < area < 3000:  # Contour area thresholds
+                    object_count += 1
                     cx, cy, cw, ch = cv2.boundingRect(contour)
                     bottom_y = y_offset + cy + ch
                     contour_loop = (cx, cy, cw, ch)
                     contours_info.append((bottom_y, color, contour_loop))  # Add contour info as well
 
+            self.object_counts[color].append(object_count)
         # Step 2: Sort contours by bottom_y (largest first)
         contours_info.sort(key=lambda x: x[0], reverse=True)
+        
+        total_hours = 0
+        for color in self.color_ranges:
+            smoothed_count = self.get_smoothed_count(color)
+            total_hours += smoothed_count - 1
         
         # Step 3: Identify max y contour and count others with smaller y
         if contours_info:
             max_y = contours_info[0][0]
             max_y_color = contours_info[0][1]
             max_y_contour = contours_info[0][2]
-            smaller_y_count = len(contours_info) - 1
+            smaller_y_count = total_hours - 1 #len(contours_info) - 1
             print(f"contours info is {contours_info}")
         else:
             max_y = -1
             max_y_color = None
             max_y_contour = None
             smaller_y_count = 0
-
+            
+        
         # Step 4: Optional: Store the color of the max y contour
         if max_y_color:
             self.player_colour = max_y_color
@@ -160,6 +169,9 @@ class ColorDetectionWithROI:
         suffix = "pm"
         if self.time_of_day > 12:
                 self.time_of_day -= 12
+        elif self.time_of_day <= 0:
+                self.time_of_day = 6
+                suffix = "am"
         else: 
             suffix=  "am"
         cv2.putText(image_frame, f"Time of Day: {self.time_of_day} {suffix}", (10, 100),
