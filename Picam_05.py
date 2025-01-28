@@ -123,10 +123,16 @@ class ColorDetectionWithROI:
         contours_info.sort(key=lambda x: x[0], reverse=True)
         
         # Step 3: Identify max y contour and count others with smaller y
-        max_y = contours_info[0][0] if contours_info else -1
-        max_y_color = contours_info[0][1] if contours_info else None
-        max_y_contour = contours_info[0][2] if contours_info else None
-        smaller_y_count = len(contours_info) - 1 if contours_info else 0
+        if contours_info:
+            max_y = contours_info[0][0]
+            max_y_color = contours_info[0][1]
+            max_y_contour = contours_info[0][2]
+            smaller_y_count = len(contours_info) - 1
+        else:
+            max_y = -1
+            max_y_color = None
+            max_y_contour = None
+            smaller_y_count = 0
 
         # Step 4: Optional: Store the color of the max y contour
         if max_y_color:
