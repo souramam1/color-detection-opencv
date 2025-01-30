@@ -1,6 +1,5 @@
 import numpy as np
 import cv2
-from picamera2 import Picamera2
 from collections import deque, Counter
 
 
@@ -8,11 +7,10 @@ from collections import deque, Counter
 # This is for the clock! FOR RPI CAMERA --> PICAM 06 WILL BE FOR WEBCAM
 
 class ColorDetectionWithROI:
-    def __init__(self, smoothing_window_size=5,transition_window_size=10,stability_threshold = 5, resolution=(640, 480), format="RGB888"):
-        self.picam2 = Picamera2()
-        self.resolution = resolution
-        self.format = format
-        self.configure_camera()
+    def __init__(self, smoothing_window_size=5,transition_window_size=10,stability_threshold = 5, webcam_index=0):
+        
+        self.webcam = cv2.VideoCapture(webcam_index)
+        
         
         # Define HSV range for green color (adjust if needed)
         self.green_range = ((40, 50, 50), (80, 255, 255))  # HSV range for green
@@ -39,15 +37,15 @@ class ColorDetectionWithROI:
         self.stability_colour_time = deque(maxlen=self.stability_threshold)
         self.stability_small_y_time = deque(maxlen=self.stability_threshold)
     
-    def configure_camera(self):
-        """Configure the camera with specified resolution and format."""
-        self.picam2.configure(self.picam2.create_preview_configuration(main={"format": self.format, "size": self.resolution}))
-        self.picam2.start()
-    
     def capture_frame(self):
         """Capture a frame from the Picamera2 and return it."""
-        frame = self.picam2.capture_array()
+        ret, frame = self.webcam.read()
+        if not ret:
+            print("Failed to grab frame")
+            return None
         return frame
+    
+
     
     def detect_green_roi(self, hsv_frame):
         """Detect the green ROI in the frame."""
@@ -292,9 +290,11 @@ class ColorDetectionWithROI:
             self.cleanup()
     
     def cleanup(self):
-        self.picam2.stop()
-        self.picam2.close()
+        # Release the webcam and close all OpenCV windows
+        self.webcam.release()
         cv2.destroyAllWindows()
+        
+        
 
 
 # Run the program

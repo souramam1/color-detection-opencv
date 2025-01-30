@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 
 class ColorDetection:
-    def __init__(self, webcam_index=0):
+    def __init__(self, webcam_index=1):
         # Initialize webcam and set color ranges for Red, Green, and Blue
         self.webcam = cv2.VideoCapture(webcam_index)
         
