@@ -13,7 +13,7 @@ class ColorDetectionWithROI:
         
         
         # Define HSV range for green color (adjust if needed)
-        self.green_range = ((40, 50, 50), (80, 255, 255))  # HSV range for green
+        self.green_range = ((40, 50, 10), (80, 255, 255))  # HSV range for green
         
         # Define color ranges for contour detection
         self.color_ranges = {
