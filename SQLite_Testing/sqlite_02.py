@@ -1,6 +1,7 @@
 import sqlite3
 import json
-from datetime import datetime
+from datetime import datetime 
+from collections import Counter
 
 # Connect to SQLite database
 conn = sqlite3.connect('game_data.db')
@@ -60,36 +61,107 @@ def log_game_hour_data(player_name, game_hour, consumption, production, game_hou
     ''', (player_id, game_hour, consumption, production, game_hour_constitution_json))
     conn.commit()
     
-def update_player_game_hour_constitution(player_name, game_hour, new_game_hour_constitution):
-    """Update the game hour constitution for a player at a specific game hour."""
-    # Convert the new game_hour_constitution list to a JSON string
-    new_game_hour_constitution_json = json.dumps(new_game_hour_constitution)
+import json
+
+def update_player_game_hour_constitution(player_name, game_hour, difference):
+    """Update the player's game hour constitution based on the difference."""
     
-    # Get player_id based on player name
+    # Get the player_id from the players table
     cursor.execute("SELECT player_id FROM players WHERE name = ?", (player_name,))
     player_id = cursor.fetchone()
     
-    if player_id:
-        player_id = player_id[0]
-        
-        # Update the game_hour_constitution for the specified player and game hour
-        cursor.execute('''
-        UPDATE game_hours
-        SET game_hour_constitution = ?
-        WHERE player_id = ? AND game_hour = ?
-        ''', (new_game_hour_constitution_json, player_id, game_hour))
-        
-        # Commit the changes to the database
-        conn.commit()
-        
-        print(f"Updated game hour constitution for {player_name} at hour {game_hour}.")
-    else:
-        print(f"Player {player_name} not found.")
+    if not player_id:
+        print(f"Error: Player '{player_name}' not found.")
+        return
+    
+    player_id = player_id[0]  # Extract the player_id from the tuple
 
-def calculate_player_hour_constitution():
+    # Fetch the current game_hour_constitution, production, and consumption for the player and game_hour
+    cursor.execute(''' 
+    SELECT game_hour_constitution, production, consumption 
+    FROM game_hours 
+    WHERE player_id = ? AND game_hour = ? 
+    ''', (player_id, game_hour))
+    
+    result = cursor.fetchone()
+
+    if result:
+        # Extract current constitution, production, and consumption values
+        current_constitution = json.loads(result[0])  # Convert JSON string to list
+        production = result[1]  # Extract production value
+        consumption = result[2]  # Extract consumption value
+    else:
+        # If no entry exists, assume empty constitution and default production/consumption
+        current_constitution = []
+        production = 0  # Default production value if no record exists
+        consumption = 0  # Default consumption value if no record exists
+
+    # Call the function to calculate the new constitution
+    new_constitution = calculate_new_player_hour_constitution(current_constitution, difference, production, consumption)
+
+    # Convert the updated constitution list back to a JSON string for database storage
+    new_constitution_json = json.dumps(new_constitution)
+
+    # Update the game_hours table with the new constitution
+    cursor.execute(''' 
+    INSERT INTO game_hours (player_id, game_hour, game_hour_constitution)
+    VALUES (?, ?, ?)
+    ON CONFLICT(player_id, game_hour)
+    DO UPDATE SET game_hour_constitution = excluded.game_hour_constitution
+    ''', (player_id, game_hour, new_constitution_json))
+    
+    conn.commit()
+
+
+
+def calculate_new_player_hour_constitution(current_constitution, difference, production, consumption):
+    """
+    Calculate the new constitution based on the current constitution, difference, production, and consumption.
+    """
+    
+    # Step 1: Calculate the total difference based on the difference list
+    total_difference = 0  # To track the sum of all the differences
+
+    # Apply the difference list: Add or remove according to the difference sign
+    for diff in difference:
+        if diff.startswith('+'):
+            total_difference -= 1  # A positive difference means removing one
+        elif diff.startswith('-'):
+            total_difference += 1  # A negative difference means adding one
+
+    # Step 2: Apply the difference to the current constitution
+    updated_constitution = current_constitution.copy()
+
+    # Remove items from the current constitution based on the '+X' in the difference
+    for diff in difference:
+        if diff.startswith('+'):
+            letter_to_remove = diff[1]
+            if letter_to_remove in updated_constitution:
+                updated_constitution.remove(letter_to_remove)
+
+    # Add items to the constitution based on the '-X' in the difference
+    for diff in difference:
+        if diff.startswith('-'):
+            letter_to_add = diff[1]
+            updated_constitution.append(letter_to_add)
+
+    # Step 3: Calculate the "Grid" value (consumption adjustment)
+    grid_value = total_difference - consumption
+
+    # Step 4: Add 'G' based on the grid value
+    if grid_value < 0:
+        # If the grid is negative, add 'G' for each negative value
+        updated_constitution.extend(['G'] * abs(grid_value))
+
+    # Step 5: Return the new constitution list
+    return updated_constitution
+
 
 def log_battery_data_and_update_constitution(player_name, game_hour, battery_constitution):
     """Log battery data and update the player's game hour constitution."""
+    #First use the data in string format to calculate change in battery constitution
+    difference = compare_battery_log(battery_constitution)
+    
     # Convert battery_constitution list to a JSON string
     battery_constitution_json = json.dumps(battery_constitution)
     
@@ -104,8 +176,50 @@ def log_battery_data_and_update_constitution(player_name, game_hour, battery_con
     ''', (battery_constitution_json, player_id, game_hour, datetime.now()))
     conn.commit()
     
-    # Now update the player's game hour constitution
-    update_player_game_hour_constitution(player_name, game_hour)
+    # If a previous log exists, update constitution
+    if difference is not None:
+        update_player_game_hour_constitution(player_name, game_hour, difference)
+    
+def compare_battery_log(new_battery_constitution):
+    """Compare the new battery constitution with the most recent logged one (handling letters)."""
+    
+    # Retrieve the last logged battery constitution (from any player)
+    cursor.execute('''
+    SELECT battery_constitution FROM battery_log
+    ORDER BY timestamp DESC
+    LIMIT 1
+    ''')
+    
+    last_log = cursor.fetchone()
+    
+    if not last_log:
+        return None  # No previous logs exist
+    
+    # Convert JSON string back to a Python list
+    last_battery_constitution = json.loads(last_log[0])
+
+    # Count occurrences of each letter
+    old_counts = Counter(last_battery_constitution)
+    new_counts = Counter(new_battery_constitution)
+
+    # Compute differences
+    difference = []
+
+    # Check for removed elements (-X)
+    for letter, old_count in old_counts.items():
+        new_count = new_counts.get(letter, 0)  # Default to 0 if letter isn't in new list
+        if old_count > new_count:
+            for _ in range(old_count - new_count):
+                difference.append(f'-{letter}')
+
+    # Check for added elements (+X)
+    for letter, new_count in new_counts.items():
+        old_count = old_counts.get(letter, 0)  # Default to 0 if letter wasn't in old list
+        if new_count > old_count:
+            for _ in range(new_count - old_count):
+                difference.append(f'+{letter}')
+
+    return difference
 
 
 def update_player_game_hour_constitution(player_name, game_hour):
