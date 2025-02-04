@@ -7,7 +7,7 @@ from collections import Counter
 
 
 # Connect to SQLite database
-db_path = 'game_03_database.db'
+db_path = 'game_04_database.db'
 print(f"Opening database at: {os.path.abspath(db_path)}")
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
@@ -46,19 +46,19 @@ CREATE TABLE IF NOT EXISTS game_hour_data (
 conn.commit()
 
 
-def add_player(name):
+def init_player(name):
     cursor.execute("INSERT INTO players (name) VALUES (?)", (name,))
     conn.commit()
     
     
-def load_prosumption_from_csv(csv_file_path):
+def init_players_csv(csv_file_path):
     
     csv_path =  os.path.abspath(csv_file_path)
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"Error: CSV file not found at {csv_path}")
 
     """Load production and consumption data from the CSV file into the database."""
-    #Open the CSV file in which initialised player values are stored, and load them into a database
+    #Open CSV file containing initialised player values,load them into a database
     with open(csv_path, "r", newline="" ) as file:
         reader = csv.reader(file)
         print("File opened successfully")
@@ -89,7 +89,27 @@ def load_prosumption_from_csv(csv_file_path):
     # Commit the changes
     conn.commit()
     print("CSV file processing complete.")
+    
+    # Function to read battery constitution from a CSV and insert JSON into the database
+def init_battery_logs(csv_filepath):
+    with open(csv_filepath, "r", newline="") as file:
+        reader = csv.reader(file)
+        for row in reader:
+            print(row)
+            battery_constitution_json = json.dumps(row)  # Convert list to JSON string
+            player_id = 99  # Generate random player_id
+            game_hour = 0  # Random hour between 0-23
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Current timestamp
+            
+            # Insert into database
+            cursor.execute('''
+                INSERT INTO battery_log (battery_constitution, player_id, game_hour, timestamp)
+                VALUES (?, ?, ?, ?)
+            ''', (battery_constitution_json, player_id, game_hour, timestamp))
 
+    conn.commit()
+    print("Battery log entries inserted successfully!")
+    
 
 
 def update_player_game_hour_constitution(player_name, game_hour, difference):
@@ -284,30 +304,14 @@ def print_player_game_hours(player_name):
 
 # Add players: Teal, Orange, Magenta, Yellow
 for player_name in ['Teal', 'Orange', 'Magenta', 'Yellow']:
-    add_player(player_name)
+    init_player(player_name)
     
-load_prosumption_from_csv("SQLite_Testing\sqlite_prosum.csv")
+init_players_csv("SQLite_Testing\sqlite_prosum.csv")
+#init_battery_logs("SQLite_Testing\sqlite_battery.csv")
 
 
 
 
-# # Step 3: Query the database and print the contents of the game_hours table
-# cursor.execute('SELECT player_id, game_hour, consumption, production FROM game_hour_data')
-# rows = cursor.fetchall()
-
-# # Print the results
-# print("Contents of the game_hour_data table:")
-# for row in rows:
-#     print(row)
-
-# # Close the connection when done
-# conn.close()
-
-
-# log_game_hour_data("Teal", 1, 50, 30, game_hour_constitution_example)
-# log_battery_data("Teal", 1, battery_constitution_example)
-# print_battery_log()
-# print_player_game_hours("Teal")
 
 
 
