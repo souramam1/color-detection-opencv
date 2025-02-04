@@ -7,20 +7,22 @@ from collections import Counter
 
 
 class GameDatabase:
-    def __init__(self, db_path=f'game_06_database.db', players=['Teal','Orange','Magenta','Yellow']):
+    def __init__(self, db_path=f'game_11_database.db', players=['Teal','Orange','Magenta','Yellow'], init_val = 0):
         """Initialize the database connection and create tables."""
         self.db_path = db_path
         print(f"Opening database at: {os.path.abspath(self.db_path)}")
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
-        self.create_tables()
-        for player in players:
-            self.insert_player(player)
-        self.init_player_data_from_csv("SQLite_Testing\sqlite_prosum.csv")
-        self.init_battery_data_from_csv("SQLite_Testing\sqlite_battery.csv")
+        
+        if init_val == 1:
+            self.create_tables()
+            for player in players:
+                self.insert_player(player)
+            self.init_player_data_from_csv("SQLite_Testing\sqlite_prosum.csv")
+            self.init_battery_data_from_csv("SQLite_Testing\sqlite_battery.csv")
         
 
-    ################ INITIALISATION METHODS ###################
+    #---------------------------------INITIALISATION METHODS ------------------------------------------#
     def create_tables(self):
         """Creates all necessary tables in the database."""
         self.cursor.execute('''
@@ -50,6 +52,7 @@ class GameDatabase:
             production INTEGER,
             game_hour_constitution TEXT,
             FOREIGN KEY (player_id) REFERENCES players(player_id)
+            UNIQUE(player_id, game_hour)
         );
         ''')
 
@@ -63,6 +66,38 @@ class GameDatabase:
         """Inserts a new player into the database."""
         self.cursor.execute("INSERT OR IGNORE INTO players (name) VALUES (?)", (name,))
         self.conn.commit()
+        
+    import json
+
+    def init_game_hour_constitution(self):
+        """Updates game hour constitution by filling it with player's initial repeated as per production value."""
+        
+        # Fetch all game hour records with player names
+        self.cursor.execute('''
+            SELECT g.game_hour_id, g.production, p.name
+            FROM game_hour_data g
+            JOIN players p ON g.player_id = p.player_id
+        ''')
+        
+        records = self.cursor.fetchall()
+
+        for record in records:
+            game_hour_id, production, player_name = record
+            player_initial = player_name[0].upper()  # Get first initial
+            
+            # Create a JSON list of the initial repeated according to production value
+            game_hour_constitution = json.dumps([player_initial] * production)
+
+            # Update the database
+            self.cursor.execute('''
+                UPDATE game_hour_data
+                SET game_hour_constitution = ?
+                WHERE game_hour_id = ?
+            ''', (game_hour_constitution, game_hour_id))
+        
+        self.conn.commit()  # Save changes
+        print("Game hour constitution updated successfully!")
+
 
     def init_player_data_from_csv(self, csv_file_path):
         """Loads players and their initial data from a CSV file."""
@@ -99,6 +134,7 @@ class GameDatabase:
 
         self.conn.commit()
         print("CSV player file processing complete")
+        self.init_game_hour_constitution()
 
     def init_battery_data_from_csv(self, csv_filepath):
         """Inserts battery constitution data from a CSV into the database."""
@@ -119,7 +155,22 @@ class GameDatabase:
         print("Battery log entries inserted successfully!")
         
         
-    ############ END OF INITIALISATION METHODS ################## 
+    #------------------------------------- END OF INITIALISATION METHODS -----------------------------------# 
+    
+    #-------------------------------------PROCESSING OF NEW TOKEN METHODS -------------------------------------#
+    
+               # EXPLANATION #
+            # When NEW DATA IS PRESENTED IN THIS FORMAT : Game Time: 16h, Player: "Magenta", Data: [] --> a list containing initials of battery constitution after turn.
+            # We call log_battery_data_and_update_constitution(self, player_name, game_hour, new_battery_constitution)
+                #This calls the def compare_battery_log(self,new_battery_constitution):
+                #This will return a list called the difference containing the initials marking the difference in constitution with a +/- sign before them.
+                #The difference value is sent to the def update_player_game_hour_constitution(self, player_name, game_hour, difference):
+                # Which IN TURN calls the calculate_new_constitution(current_constitution, difference, production, consumption) --> this uses the value of the difference as well as the current
+                # constitution to calculate the new one
+                # This is then used to update the previous entry.
+                
+    
+    
 
     def update_player_game_hour_constitution(self, player_name, game_hour, difference):
         """Updates the player's game hour constitution based on the computed difference."""
@@ -152,6 +203,7 @@ class GameDatabase:
         # Compute the new constitution
         new_constitution = self.calculate_new_constitution(current_constitution, difference, production, consumption)
         new_constitution_json = json.dumps(new_constitution)
+        print(new_constitution)
 
         # Update database
         self.cursor.execute('''
@@ -191,7 +243,7 @@ class GameDatabase:
         #Get player_id based on player name
         new_battery_constitution_json = json.dumps(new_battery_constitution)
         self.cursor.execute("SELECT player_id FROM players WHERE name = ?", (player_name,))
-        player_id = cursor.fetchone()[0]
+        player_id = self.cursor.fetchone()[0]
         
         # Insert battery log data
         self.cursor.execute('''
@@ -248,7 +300,10 @@ class GameDatabase:
                     difference.append(f'+{letter}')
 
         return difference
+    
+# ------------------------------END OF TOKEN PROCESSING METHODS ------------------------------------------#
 
+#--------------------------- PRINT FUNCTIONS TO CHECK DB CONTENTS -------------------------------------#
 
     def print_battery_log(self):
         """Prints all battery log entries."""
@@ -271,14 +326,22 @@ class GameDatabase:
         ''', (player_name,))
 
         rows = self.cursor.fetchall()
+        print(f"Fetched rows: {len(rows)}")
         for row in rows:
             game_hour, consumption, production, game_hour_constitution = row
             game_hour_constitution_list = json.loads(game_hour_constitution) if game_hour_constitution else []
             print(f"Game Hour: {game_hour}, Consumption: {consumption}, Production: {production}")
             print(f"Game Hour Constitution: {game_hour_constitution_list}\n------------")
+            
+# ------------------------- END OF PRINT FUNCTIONS TO CHECK DB CONTENTS ----------------------------------------#
+
+if __name__ == "__main__":
+    # Example Usage
+    db = GameDatabase(init_val = 0)
+    db.print_player_game_hours('Teal')
+    db.print_battery_log()
+    db.log_battery_data_and_update_constitution('Orange', 6, ['I','I','I','I','I','I','I','I','O','O','O'])
 
 
-# Example Usage
-db = GameDatabase()
 
 
