@@ -7,9 +7,16 @@ from collections import Counter
 
 
 class GameDatabase:
-    def __init__(self, db_path=f'game_11_database.db', players=['Teal','Orange','Magenta','Yellow'], init_val = 0):
+    def __init__(self, db_path_num=99, players=['Teal','Orange','Magenta','Yellow'], init_val = 0):
         """Initialize the database connection and create tables."""
-        self.db_path = db_path
+        
+        self.db_path = f'game_{db_path_num}.db'
+        if os.path.exists(self.db_path):
+            print(f"Database {self.db_path} already exists. Skipping initialization.")
+            init_val = 0  # Prevent re-initialization
+        else:
+            init_val = 1
+            
         print(f"Opening database at: {os.path.abspath(self.db_path)}")
         self.conn = sqlite3.connect(self.db_path)
         self.cursor = self.conn.cursor()
@@ -169,6 +176,10 @@ class GameDatabase:
                 # constitution to calculate the new one
                 # This is then used to update the previous entry.
                 
+                
+                # HOW TO CHECK THIS #
+            # Print out the return value from each interlinking method. # 
+                
     
     
 
@@ -185,7 +196,7 @@ class GameDatabase:
 
         # Fetch current constitution, production, and consumption values
         self.cursor.execute('''
-            SELECT game_hour_constitution, production, consumption
+            SELECT game_hour_constitution, consumption, production
             FROM game_hour_data
             WHERE player_id = ? AND game_hour = ?
         ''', (player_id, game_hour))
@@ -201,9 +212,10 @@ class GameDatabase:
             consumption = 0
 
         # Compute the new constitution
+        print(f"before the new constittution calc production is: {production}")
         new_constitution = self.calculate_new_constitution(current_constitution, difference, production, consumption)
         new_constitution_json = json.dumps(new_constitution)
-        print(new_constitution)
+        print(f"New constitution is {new_constitution}")
 
         # Update database
         self.cursor.execute('''
@@ -218,19 +230,25 @@ class GameDatabase:
     def calculate_new_constitution(self, current_constitution, difference, production, consumption):
         """Calculates the new battery constitution based on changes and grid impact."""
         total_difference = sum(-1 if diff.startswith('+') else 1 for diff in difference)
-
+        print(f"Total difference is: {total_difference}")
         updated_constitution = current_constitution.copy()
-
+        print(f"the constitution before change is: {current_constitution}")
         for diff in difference:
             if diff.startswith('+'):
                 letter_to_remove = diff[1]
+                print(f"Letter to remove is: {letter_to_remove}")
                 if letter_to_remove in updated_constitution:
                     updated_constitution.remove(letter_to_remove)
             elif diff.startswith('-'):
                 letter_to_add = diff[1]
+                print(f"Letter to add is: {letter_to_add}")
                 updated_constitution.append(letter_to_add)
+        print(f"updated constitution before the grid additions is: {updated_constitution}")
 
-        grid_value = total_difference - consumption
+        grid_value = production - consumption + total_difference
+        print(f"Production value is: {production}")
+        print(f"Consumption value is: {consumption}")
+        print(f"Grid value is: {grid_value}")
         if grid_value < 0:
             updated_constitution.extend(['G'] * abs(grid_value))
 
@@ -239,6 +257,7 @@ class GameDatabase:
     def log_battery_data_and_update_constitution(self, player_name, game_hour, new_battery_constitution):
         """Logs battery data, compares logs, and updates game hour constitution."""
         difference = self.compare_battery_log(new_battery_constitution)
+        print(f"Difference is: {difference}")
 
         #Get player_id based on player name
         new_battery_constitution_json = json.dumps(new_battery_constitution)
@@ -337,10 +356,51 @@ class GameDatabase:
 
 if __name__ == "__main__":
     # Example Usage
-    db = GameDatabase(init_val = 0)
-    db.print_player_game_hours('Teal')
+    db = GameDatabase(db_path_num=9)
+    #db.print_player_game_hours('Magenta')
     db.print_battery_log()
-    db.log_battery_data_and_update_constitution('Orange', 6, ['I','I','I','I','I','I','I','I','O','O','O'])
+    
+    
+    db.log_battery_data_and_update_constitution('Magenta', 9, ['I','I','I','I','I','I','I'])
+    #db.log_battery_data_and_update_constitution('Yellow', 9, ['I','I','I','I','I','I','I'])
+    #db.log_battery_data_and_update_constitution('Orange', 9, ['I','I','I','I'])
+    
+    #db.log_battery_data_and_update_constitution('Magenta', 10, ['I','I','I','I','M'])
+    #db.log_battery_data_and_update_constitution('Yellow', 10, ['I','I','I'])
+    #db.log_battery_data_and_update_constitution('Orange', 10, ['I','I'])
+    
+    #db.log_battery_data_and_update_constitution('Magenta', 11, ['I','I','M'])
+    #db.log_battery_data_and_update_constitution('Yellow', 11, ['I','M'])
+    #db.log_battery_data_and_update_constitution('Orange', 11, ['I', 'M', 'O'])
+    
+    #db.log_battery_data_and_update_constitution('Magenta', 12, ['M','O'])
+    #db.log_battery_data_and_update_constitution('Yellow', 12, [])
+    #db.log_battery_data_and_update_constitution('Orange', 12, ['O'])
+    
+    #db.log_battery_data_and_update_constitution('Magenta', 13, ['O','M','M','M'])
+    #db.log_battery_data_and_update_constitution('Yellow', 13, ['O','M','M','M','Y','Y','Y'])
+    #db.log_battery_data_and_update_constitution('Orange', 13, ['O','O','O','M','M','M','Y','Y','Y'])
+    
+    #db.log_battery_data_and_update_constitution('Magenta', 14, ['O','O','O','M','M','M','Y','Y'])
+    #db.log_battery_data_and_update_constitution('Yellow', 14, ['O','O','O','M','M','Y','Y'])
+    #db.log_battery_data_and_update_constitution('Orange', 14, ['O','O','M','Y','Y'])
+    
+    #db.log_battery_data_and_update_constitution('Magenta', 15, ['O','O','M','Y','Y'])
+    #db.log_battery_data_and_update_constitution('Yellow', 15, ['O','O','M','Y','Y','Y'])
+    #db.log_battery_data_and_update_constitution('Orange', 15, ['O','O','M','Y','Y','Y','O'])
+    
+    #db.log_battery_data_and_update_constitution('Magenta', 16, ['O','O','M','Y','Y','Y'])
+    #db.log_battery_data_and_update_constitution('Yellow', 16, ['O','O','M','Y','Y','Y']) 
+    #db.log_battery_data_and_update_constitution('Orange', 16, ['O','O','M','Y','Y','Y'])
+    
+    #db.log_battery_data_and_update_constitution('Yellow', 17, ['I','I','I'])
+    #db.log_battery_data_and_update_constitution('Magenta', 17, ['I','I','I','M'])
+    #db.log_battery_data_and_update_constitution('Orange', 17, ['I','I','I','I'])
+    
+    #db.log_battery_data_and_update_constitution('Yellow', 18, ['I','I','I'])
+    #db.log_battery_data_and_update_constitution('Magenta', 18, ['I','I','I','M'])
+    #db.log_battery_data_and_update_constitution('Orange', 18, ['I','I','I','I'])
+   
 
 
 
