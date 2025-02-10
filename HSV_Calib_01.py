@@ -28,9 +28,9 @@ class HSVCalibrator:
         high_v = cv2.getTrackbarPos("High V", window_name)
         return (low_h, low_s, low_v), (high_h, high_s, high_v)
     
-    def calibrate_color(self, color):
-        print(f"Calibrating {color}... Adjust the sliders and press 'c' to confirm.")
-        window_name = f"HSV Calibration - {color}"
+    def calibrate_color(self, colour):
+        print(f"Calibrating {colour}... Adjust the sliders and press 'c' to confirm.")
+        window_name = f"HSV Calibration - {colour}"
         self.create_trackbar_window(window_name)
         
         while True:
@@ -49,18 +49,18 @@ class HSVCalibrator:
             
             key = cv2.waitKey(1) & 0xFF
             if key == ord('c'):
-                self.calibrated_values[color] = (lower, upper)
-                print(f"Saved {color} values: Lower HSV {lower}, Upper HSV {upper}")
+                self.calibrated_values[colour] = (lower, upper)
+                print(f"Saved {colour} values: Lower HSV {lower}, Upper HSV {upper}")
                 cv2.destroyWindow(window_name)
                 break
     
     def run(self):
-        for color in self.colors:
-            self.calibrate_color(color)
+        for colour in self.colors:
+            self.calibrate_color(colour)
         
         print("Final calibrated values:")
-        for color, (lower, upper) in self.calibrated_values.items():
-            print(f"{color}: Lower {lower}, Upper {upper}")
+        for colour, (lower, upper) in self.calibrated_values.items():
+            print(f"{colour}: Lower {lower}, Upper {upper}")
         
         self.cap.release()
         cv2.destroyAllWindows()

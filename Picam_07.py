@@ -9,7 +9,7 @@ from collections import deque, Counter
 
 
 
-class ColorDetectionWithROI:
+class ColourDetectionWithROI:
     
     init_calib_val = {
             "green": ((56, 42, 49), (85, 255, 255)),
@@ -21,15 +21,15 @@ class ColorDetectionWithROI:
     def __init__(self, final_hsv_calib = init_calib_val, smoothing_window_size=5,transition_window_size=10,stability_threshold = 5, webcam_index=1):
         self.webcam = cv2.VideoCapture(webcam_index)
         
-        # Define HSV range for green color (adjust if needed)
+        # Define HSV range for green colour (adjust if needed)
         self.green_range = ((56, 42, 49), (85, 255, 255))  # HSV range for green
         
-        # Define color ranges for contour detection
+        # Define colour ranges for contour detection
         self.color_ranges = final_hsv_calib
         
         self.kernel = np.ones((5, 5), "uint8")
         self.smoothing_window_size = smoothing_window_size
-        self.object_counts = {color: deque(maxlen=smoothing_window_size) for color in self.color_ranges}
+        self.object_counts = {colour: deque(maxlen=smoothing_window_size) for colour in self.color_ranges}
         self.roi_count = deque(maxlen=smoothing_window_size)
 
     
@@ -92,10 +92,10 @@ class ColorDetectionWithROI:
             roi_hsv = hsv_frame[y:y+h, x:x+w]  # Crop HSV frame to ROI
             
             # Generate masks for the defined colors within the ROI
-            for color, (lower, upper) in self.color_ranges.items():
+            for colour, (lower, upper) in self.color_ranges.items():
                 mask = cv2.inRange(roi_hsv, lower, upper)
                 mask = cv2.dilate(mask, self.kernel)
-                masks[color] = mask
+                masks[colour] = mask
             
             return image_frame, masks, roi
         else:
@@ -104,22 +104,22 @@ class ColorDetectionWithROI:
     def detect_and_draw_contours(self, image_frame, masks, roi):
         if roi:
             x, y, w, h = roi
-            for color, mask in masks.items():
+            for colour, mask in masks.items():
                 contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
                 object_count = 0
                 
                 for contour in contours:
                     area = cv2.contourArea(contour)
-                    print(f"found area is {color}: {area}")
+                    print(f"found area is {colour}: {area}")
                     if 800 < area < 1500:  # Minimum contour area threshold
-                        print(f"found area is {color}: {area}")
+                        print(f"found area is {colour}: {area}")
                         object_count += 1
                         cx, cy, cw, ch = cv2.boundingRect(contour)
-                        cv2.rectangle(image_frame, (x+cx, y+cy), (x+cx+cw, y+cy+ch), self.get_color_for_display(color), 2)
-                        cv2.putText(image_frame, f"{color.capitalize()} Colour", (x+cx, y+cy-10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.get_color_for_display(color), 2)
+                        cv2.rectangle(image_frame, (x+cx, y+cy), (x+cx+cw, y+cy+ch), self.get_color_for_display(colour), 2)
+                        cv2.putText(image_frame, f"{colour.capitalize()} Colour", (x+cx, y+cy-10),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.get_color_for_display(colour), 2)
                 
-                self.object_counts[color].append(object_count)
+                self.object_counts[colour].append(object_count)
             
             # Draw the green ROI box
             cv2.rectangle(image_frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
@@ -127,36 +127,36 @@ class ColorDetectionWithROI:
         
         return image_frame
     
-    def get_smoothed_count(self, color):
-        # Apply moving average smoothing to the counts for each color
+    def get_smoothed_count(self, colour):
+        # Apply moving average smoothing to the counts for each colour
         
-        if not self.object_counts[color]:  # Check if the list/array is empty
+        if not self.object_counts[colour]:  # Check if the list/array is empty
             return 0  # Or another default value
-        return int(np.mean(self.object_counts[color]))
+        return int(np.mean(self.object_counts[colour]))
     
-    def get_color_for_display(self, color):
-        """Map color name to display color in BGR."""
+    def get_color_for_display(self, colour):
+        """Map colour name to display colour in BGR."""
         color_map = {
             "orange": (0, 165, 255),
             "yellow": (0, 255, 255),
             "magenta": (255, 0, 255),
             "teal": (255, 128, 0)
         }
-        return color_map.get(color, (255, 255, 255))
+        return color_map.get(colour, (255, 255, 255))
     
     def show_result(self, image_frame):
         
-        # Display the image with detected color regions
+        # Display the image with detected colour regions
         y_offset = 30  # Starting y position for displaying tally
         
         # Loop over all colors and their smoothed counts to display the tally
-        for color in self.color_ranges:
-            smoothed_count = self.get_smoothed_count(color)
-            cv2.putText(image_frame, f"{color.capitalize()} Objects: {smoothed_count}", (10, y_offset),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, self.get_color_for_display(color), 3)  # Adjusted font size
-            y_offset += 40  # Move down for the next color tally
+        for colour in self.color_ranges:
+            smoothed_count = self.get_smoothed_count(colour)
+            cv2.putText(image_frame, f"{colour.capitalize()} Objects: {smoothed_count}", (10, y_offset),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, self.get_color_for_display(colour), 3)  # Adjusted font size
+            y_offset += 40  # Move down for the next colour tally
         """Display the result frame."""
-        cv2.imshow("Color Detection with ROI", image_frame)
+        cv2.imshow("colour Detection with ROI", image_frame)
     
     def run(self):
         try:
@@ -178,5 +178,5 @@ class ColorDetectionWithROI:
 
 # Run the program
 if __name__ == "__main__":
-    color_detection = ColorDetectionWithROI(smoothing_window_size=10)
+    color_detection = ColourDetectionWithROI(smoothing_window_size=10)
     color_detection.run()
