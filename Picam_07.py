@@ -1,43 +1,45 @@
 import numpy as np
 import cv2
-from picamera2 import Picamera2
-from collections import deque
+from collections import deque, Counter
 
 
 #This script detects the bounds of a region of interest - defined as the largest area
 # bound by the colour green - and then only identifies colour blobs within those bounds.
 # It does not count those blobs over time.
 
+
+
 class ColorDetectionWithROI:
-    def __init__(self, smoothing_window_size=5, resolution=(640, 480), format="RGB888"):
-        self.picam2 = Picamera2()
-        self.resolution = resolution
-        self.format = format
-        self.configure_camera()
+    
+    init_calib_val = {
+            "green": ((56, 42, 49), (85, 255, 255)),
+            "orange": ((0, 0, 50), (16, 255, 255)),
+            "yellow": ((16, 50, 50), (39, 255, 255)),
+            "magenta": ((116, 52, 50), (179, 255, 255)),   
+    }
+    
+    def __init__(self, final_hsv_calib = init_calib_val, smoothing_window_size=5,transition_window_size=10,stability_threshold = 5, webcam_index=1):
+        self.webcam = cv2.VideoCapture(webcam_index)
         
         # Define HSV range for green color (adjust if needed)
-        self.green_range = ((40, 50, 50), (80, 255, 255))  # HSV range for green
+        self.green_range = ((56, 42, 49), (85, 255, 255))  # HSV range for green
         
         # Define color ranges for contour detection
-        self.color_ranges = {
-            "orange": ((0, 50, 50), (10, 255, 255)),
-            "yellow": ((15, 50, 50), (40, 255, 255)),
-            "magenta": ((140, 50, 50), (170, 255, 255)),
-            "teal": ((85, 50, 50), (100, 255, 255))
-        }
+        self.color_ranges = final_hsv_calib
         
         self.kernel = np.ones((5, 5), "uint8")
         self.smoothing_window_size = smoothing_window_size
         self.object_counts = {color: deque(maxlen=smoothing_window_size) for color in self.color_ranges}
+        self.roi_count = deque(maxlen=smoothing_window_size)
+
     
-    def configure_camera(self):
-        """Configure the camera with specified resolution and format."""
-        self.picam2.configure(self.picam2.create_preview_configuration(main={"format": self.format, "size": self.resolution}))
-        self.picam2.start()
-    
+
     def capture_frame(self):
         """Capture a frame from the Picamera2 and return it."""
-        frame = self.picam2.capture_array()
+        ret, frame = self.webcam.read()
+        if not ret:
+            print("Failed to grab frame")
+            return None
         return frame
     
     def detect_green_roi(self, hsv_frame):
@@ -45,28 +47,34 @@ class ColorDetectionWithROI:
         mask = cv2.inRange(hsv_frame, *self.green_range)
         mask = cv2.dilate(mask, self.kernel)
         
-        # THIS DOES NOT USE A POLYGON APPROXIMATION TO STABILISE THE ROI
-        # contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        # for contour in contours:
-        #     area = cv2.contourArea(contour)
-        #     if area > 3000:  # Threshold for green area size
-        #         x, y, w, h = cv2.boundingRect(contour)
-        #         return (x, y, w, h)  # Return the bounding box of the largest green area
-        # return None  # No ROI detected
-        
-        # THIS USES A POLYGON APPROXIMATION - I.E if it's NOT A SQUARE, DON'T DETECT IT.
+        #THIS DOES NOT USE A POLYGON APPROXIMATION TO STABILISE THE ROI
         contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         for contour in contours:
-            
-            epsilon = 0.01 * cv2.arcLength(contour, True)  # Approximation accuracy
-            approx = cv2.approxPolyDP(contour, epsilon, True)  
-            print(f"measured contour length is {len(approx)} !")
-            if len(approx) == 4:
-                area = cv2. contourArea(contour)  
-                if area > 3000:  # Threshold for green area size
-                    x, y, w, h = cv2.boundingRect(contour)
-                    return (x, y, w, h)  # Return the bounding box of the largest green area
+            area = cv2.contourArea(contour)
+            print(f"green area is: {area}")
+            if area > 80000:  # Threshold for green area size
+                x, y, w, h = cv2.boundingRect(contour)
+                self.roi_count.append(1)
+                return (x, y, w, h)  # Return the bounding box of the largest green area
+            else:
+                self.roi_count.append(0)
+                print(f"roi count is : {self.roi_count}")
         return None  # No ROI detected
+    
+        
+        # THIS USES A POLYGON APPROXIMATION - I.E if it's NOT A SQUARE, DON'T DETECT IT.
+        # contours, _ = cv2.findContours(mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # for contour in contours:
+            
+        #     epsilon = 0.05 * cv2.arcLength(contour, True)  # Approximation accuracy
+        #     approx = cv2.approxPolyDP(contour, epsilon, True)  
+        #     print(f"measured contour length is {len(approx)} !")
+        #     if len(approx) == 4:
+        #         area = cv2. contourArea(contour)  
+        #         if area > 3000:  # Threshold for green area size
+        #             x, y, w, h = cv2.boundingRect(contour)
+        #             return (x, y, w, h)  # Return the bounding box of the largest green area
+        # return None  # No ROI detected
         
     
     def process_frame(self):
@@ -102,7 +110,9 @@ class ColorDetectionWithROI:
                 
                 for contour in contours:
                     area = cv2.contourArea(contour)
-                    if area > 1000:  # Minimum contour area threshold
+                    print(f"found area is {color}: {area}")
+                    if 800 < area < 1500:  # Minimum contour area threshold
+                        print(f"found area is {color}: {area}")
                         object_count += 1
                         cx, cy, cw, ch = cv2.boundingRect(contour)
                         cv2.rectangle(image_frame, (x+cx, y+cy), (x+cx+cw, y+cy+ch), self.get_color_for_display(color), 2)
@@ -161,8 +171,8 @@ class ColorDetectionWithROI:
             self.cleanup()
     
     def cleanup(self):
-        self.picam2.stop()
-        self.picam2.close()
+        #Release the webcam and close all OpenCV windows
+        self.webcam.release()
         cv2.destroyAllWindows()
 
 

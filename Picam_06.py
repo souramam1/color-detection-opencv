@@ -7,7 +7,7 @@ from collections import deque, Counter
 # This is for the clock! FOR RPI CAMERA --> PICAM 06 WILL BE FOR WEBCAM
 
 class ColorDetectionWithROI:
-    def __init__(self, smoothing_window_size=5,transition_window_size=10,stability_threshold = 5, webcam_index=0):
+    def __init__(self, smoothing_window_size=5,transition_window_size=10,stability_threshold = 5, webcam_index=10):
         
         self.webcam = cv2.VideoCapture(webcam_index)
         
@@ -56,7 +56,7 @@ class ColorDetectionWithROI:
         for contour in contours:
             area = cv2.contourArea(contour)
             if area > 3000:  # Threshold for green area size
-                x, y, w, h = cv2.boundingRect(contour)
+                x, y, w, h = cv2.bouqqndingRect(contour)
                 return (x, y, w, h)  # Return the bounding box of the largest green area
         return None  # No ROI detected
     
