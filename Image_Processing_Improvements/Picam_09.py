@@ -69,6 +69,55 @@ class ColourDetectionWithKNN:
             return (x, y, w, h)
 
         return None
+    
+
+
+    def detect_and_draw_contours(self, gray_frame):
+        """Detects contours using Canny edge detection and draws them on the image."""
+        # Step 1: Apply GaussianBlur to reduce noise
+        blurred = cv2.GaussianBlur(gray_frame, (5, 5), 0)
+        
+        # Step 2: Use Canny edge detection to find edges
+        edges = cv2.Canny(blurred, 80, 150)  # You can adjust the thresholds (50, 150)
+        cv2.imshow("Canny Edge Detection", edges)
+
+        # Step 3: Find contours in the edge-detected image
+        contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Step 4: Make a copy of the original grayscale image to draw on it
+        frame_copy = cv2.cvtColor(gray_frame, cv2.COLOR_GRAY2BGR)
+
+        # Variables to store the largest contour
+        largest_contour = None
+        largest_area = 0
+
+        # Step 5: Draw contours and filter by area
+        for contour in contours:
+            area = cv2.contourArea(contour)
+
+            # If the area is within the desired range (800 to 1500), draw it in green
+            if 100 <= area <= 4000:
+                # Get the bounding rectangle for each contour
+                x, y, w, h = cv2.boundingRect(contour)
+                # Draw the contour in green
+                cv2.rectangle(frame_copy, (x, y), (x + w, y + h), (0, 255, 0), 2)
+
+            # If the contour is the largest one (above 1500 pixels), store it and draw it in red
+            if area > largest_area:
+                largest_area = area
+                largest_contour = contour
+
+        # Step 6: Highlight the largest contour in red if it exists
+        if largest_contour is not None:
+            # Get the bounding rectangle for the largest contour
+            x, y, w, h = cv2.boundingRect(largest_contour)
+            # Draw the largest contour in red
+            cv2.rectangle(frame_copy, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+        # Step 7: Show the result with contours drawn
+        cv2.imshow("Contours Detected with Canny", frame_copy)
+
+        return frame_copy
 
 
     def detect_objects(self, gray_frame, roi):
@@ -96,7 +145,6 @@ class ColourDetectionWithKNN:
 
         color_label = self.knn.predict([mean_hsv])
         return color_label[0]
-
     def process_frame(self):
         """Main pipeline: Detect ROI, detect objects, classify colors."""
         frame = self.capture_frame()
@@ -105,33 +153,10 @@ class ColourDetectionWithKNN:
 
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         
-        roi = self.detect_roi(gray_frame)
+        frame_with_contours = self.detect_and_draw_contours(gray_frame)
+        #cv2.imshow("contours detected", frame_with_contours)
+        return frame_with_contours
 
-        if roi:
-            print("ROI DETECTED!")
-            x, y, w, h = roi
-            roi_frame = frame[y:y+h, x:x+w]
-            contours = self.detect_objects(gray_frame, roi)
-
-            object_counts = {color: 0 for color in self.color_samples.keys()}
-            for contour in contours:
-                if cv2.contourArea(contour) > 500:  # Ignore small noise
-                    color = self.classify_object_color(roi_frame, contour)
-                    object_counts[color] += 1
-
-                    # Draw contours
-                    cx, cy, cw, ch = cv2.boundingRect(contour)
-                    cv2.rectangle(frame, (x+cx, y+cy), (x+cx+cw, y+cy+ch), self.get_color_for_display(color), 2)
-                    cv2.putText(frame, color.capitalize(), (x+cx, y+cy-10), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.get_color_for_display(color), 2)
-
-            cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-            cv2.putText(frame, "ROI", (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-        else:
-            object_counts = None
-
-        return frame, object_counts, roi
     
     def show_thresholding(self):
         """Testing will show outcome of different thresholding techniques"""
@@ -205,7 +230,7 @@ class ColourDetectionWithKNN:
         try:
             while True:
                 # ORIGINAL CODE - UNCOMMENT
-                frame, object_counts, _ = self.process_frame()
+                frame = self.process_frame()
                 # END OF ORIGINAL
                 
                 # TESTING CODE
@@ -214,11 +239,11 @@ class ColourDetectionWithKNN:
                 
                 if frame is not None:
                     # ORIGINAL CODE  - UNCOMMENT
-                    self.show_result(frame, object_counts)
+                    #self.show_result(frame, object_counts)
                     # END OF ORIGINAL
                     
                     #TESTING CODE
-                    #print("test running") 
+                    print("test running") 
                     # END OF TESTING CODE                   
                 
                 if cv2.waitKey(10) & 0xFF == ord('q'):
