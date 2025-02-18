@@ -69,6 +69,34 @@ class ColourDetectionWithKNN:
             return (x, y, w, h)
 
         return None
+    
+    def detect_and_draw_contours(self, gray_frame):
+        """Detects contours and draws bounding boxes around them."""
+        # Apply adaptive thresholding to the grayscale image
+        blurred = cv2.GaussianBlur(gray_frame, (5, 5), 0)  # Reduce noise
+        thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+                                    cv2.THRESH_BINARY, 11, 2)  # Adaptive thresholding
+        cv2.imshow("Thresholded Image", thresh)
+
+        # Find contours in the thresholded image
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Make a copy of the original grayscale frame to draw on it
+        frame_copy = gray_frame.copy()
+
+        # Loop through the contours
+        for contour in contours:
+            # Get the bounding rectangle for each contour
+            x, y, w, h = cv2.boundingRect(contour)
+
+            # Draw a green rectangle around each detected contour
+            cv2.rectangle(frame_copy, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Green bounding box
+
+        # Show the result with bounding boxes drawn
+        cv2.imshow("Contours Detected", frame_copy)
+
+        return frame_copy
+
 
 
     def detect_objects(self, gray_frame, roi):
