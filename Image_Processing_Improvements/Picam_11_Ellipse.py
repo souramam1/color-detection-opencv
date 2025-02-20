@@ -108,30 +108,22 @@ class ContourDetection:
         roi_x, roi_y, roi_w, roi_h = roi
         cv2.rectangle(frame_copy, (roi_x, roi_y), (roi_x + roi_w, roi_y + roi_h), (0, 0, 255), 2)
         
-        
         self.detected_token_contours = []
         
-        
         for contour in contours:
-            rect = cv2.minAreaRect(contour)
-            box = cv2.boxPoints(rect)
-            box = np.int32(box)
-            x,y = rect[0][0], rect[0][1]
-            width,height = rect[1][0], rect[1][1]
-            area = width * height
-            
-            #write width and height of rectangle as variables instead of indexing rect all the time.
-            if 300 < area <= 800:
-                print("token contour detected")
-                if roi_x <= x <= roi_x + roi_w and roi_y <= y <= roi_y + roi_h:
-                    print("in else")
-                    cv2.drawContours(frame_copy, [box], 0, (0, 0, 255), 2)
-                    cv2.putText(frame_copy, f"{area:.0f}", (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
-                    
-                    self.detected_token_contours.append(contour)
-                    
-                    
-        print(f"frame type is: {type(frame_copy)}")
+            if len(contour) >= 5:  # fitEllipse requires at least 5 points
+                ellipse = cv2.fitEllipse(contour)
+                (x, y), (width, height), angle = ellipse
+                area = width * height
+                print(f"area is {area}")
+                if 1200 < area <= 1900:
+                    if roi_x <= x <= roi_x + roi_w and roi_y <= y <= roi_y + roi_h:
+                        cv2.ellipse(frame_copy, ellipse, (0, 0, 255), 2)
+                        cv2.putText(frame_copy, f"{area:.0f}", (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
+                        cv2.putText(frame_copy, f"W: {int(width)}, H: {int(height)}", (int(x), int(y) + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
+                        
+                        self.detected_token_contours.append(contour)
+        
         return frame_copy
 
     def draw_colored_contours(self, frame_copy, contours):
