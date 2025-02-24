@@ -7,6 +7,9 @@ import time
 
 class ContourDetection:
     
+    """Same as 11 but with different parameters passed into the Hough transform - this ENUMERATES contours then does the detection in them - this 
+    method would be INCORRECT - but is too computationally expensive in either way."""
+    
     def __init__(self, webcam_index=1):
         self.webcam = cv2.VideoCapture(webcam_index)
         self.detected_token_contours = []

@@ -4,6 +4,8 @@ from sklearn.neighbors import KNeighborsClassifier
 
 class ContourDetection:
     
+    """Does not run: Too computationally expensive. Uses elliptical Hough detection after Canny Edge detection to identify ellipses in image."""
+    
     def __init__(self, webcam_index=1):
         self.webcam = cv2.VideoCapture(webcam_index)
         self.detected_token_contours = []
@@ -75,7 +77,7 @@ class ContourDetection:
 
     def apply_canny_edge_detection(self, blurred):
         """Use Canny edge detection to find edges."""
-        edges = cv2.Canny(blurred, 80, 100)
+        edges = cv2.Canny(blurred, 50, 120)
         cv2.imshow("Canny Edge Detection", edges)
         return edges
 
@@ -111,7 +113,7 @@ class ContourDetection:
         self.detected_token_contours = []
         
         for contour in contours:
-            if len(contour) >= 5:  # fitEllipse requires at least 5 points
+            if len(contour) >= 16:  # fitEllipse requires at least 5 points
                 ellipse = cv2.fitEllipse(contour)
                 (x, y), (width, height), angle = ellipse
                 area = width * height

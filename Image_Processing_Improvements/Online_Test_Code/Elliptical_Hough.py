@@ -29,6 +29,7 @@ edges_skimage = img_as_ubyte(edges)
 
 # Perform a Hough Transform
 result = hough_ellipse(edges_skimage, accuracy=20, threshold=250, min_size=100, max_size=120)
+result.size = 0
 
 # Check if any ellipses were found
 if result.size > 0:
