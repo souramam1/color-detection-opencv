@@ -46,4 +46,5 @@ def main():
 if __name__ == "__main__":
     contour_detection = ContourDetection()
     contour_detection.run()
+    
     main()

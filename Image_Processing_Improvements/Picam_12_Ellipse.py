@@ -1,6 +1,8 @@
 import numpy as np
 import cv2
-from sklearn.neighbors import KNeighborsClassifier
+from skimage.transform import hough_ellipse
+from skimage.draw import ellipse_perimeter
+from skimage.feature import canny
 
 class ContourDetection:
     
@@ -39,9 +41,6 @@ class ContourDetection:
             # I want the text to be in the same colour as the idenity of the object
             text_color = self.color_bgr[color]
             cv2.putText(frame, color, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 2)
-        
-
-    
 
     def capture_frame(self):
         """Capture a frame from the webcam."""
@@ -50,8 +49,6 @@ class ContourDetection:
             print("Failed to grab frame")
             return None
         return frame
-
-
 
     def detect_and_draw_contours(self, gray_frame):
         """Detects contours using Canny edge detection and draws them on the image."""
@@ -111,18 +108,31 @@ class ContourDetection:
         self.detected_token_contours = []
         
         for contour in contours:
-            if len(contour) >= 5:  # fitEllipse requires at least 5 points
-                ellipse = cv2.fitEllipse(contour)
-                (x, y), (width, height), angle = ellipse
-                area = width * height
-                print(f"area is {area}")
-                if 1000 < area <= 1900:
-                    if roi_x <= x <= roi_x + roi_w and roi_y <= y <= roi_y + roi_h:
-                        cv2.ellipse(frame_copy, ellipse, (0, 0, 255), 2)
-                        cv2.putText(frame_copy, f"{area:.0f}", (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
-                        cv2.putText(frame_copy, f"W: {int(width)}, H: {int(height)}", (int(x), int(y) + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
-                        
-                        self.detected_token_contours.append(contour)
+            # Convert the contour to a binary image
+            mask = np.zeros(frame_copy.shape[:2], dtype=np.uint8)
+            cv2.drawContours(mask, [contour], -1, 255, -1)
+            edges = canny(mask)
+            
+            # Perform Hough Transform to detect ellipses
+            result = hough_ellipse(edges, accuracy=20, threshold=250, min_size=30, max_size=60)
+            result.sort(order='accumulator')
+            
+            # Draw the best fitting ellipse
+            if len(result) > 0:
+                best = result[-1]
+                yc, xc, a, b = [int(round(x)) for x in best[1:5]]
+                orientation = best[5]
+                
+                # Draw the ellipse
+                cy, cx = ellipse_perimeter(yc, xc, a, b, orientation)
+                frame_copy[cy, cx] = (0, 0, 255)
+                
+                # Calculate area and display it
+                area = np.pi * a * b
+                cv2.putText(frame_copy, f"{area:.0f}", (xc, yc), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
+                cv2.putText(frame_copy, f"W: {2*a}, H: {2*b}", (xc, yc + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
+                
+                self.detected_token_contours.append(contour)
         
         return frame_copy
 
@@ -216,7 +226,7 @@ class ContourDetection:
                 frame, hsv_frame = self.process_frame()
                 self.draw_contours(frame, self.detected_token_contours, hsv_frame)
             
-                
+                 
 
                 # TESTING CODE
                 #frame = self.show_thresholding()
