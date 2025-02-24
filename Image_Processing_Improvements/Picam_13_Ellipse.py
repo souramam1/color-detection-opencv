@@ -1,6 +1,12 @@
 import numpy as np
 import cv2
-from sklearn.neighbors import KNeighborsClassifier
+from skimage.transform import hough_ellipse
+from skimage.draw import ellipse_perimeter
+from skimage.feature import canny
+import time
+
+"""This code DETECTS ELLIPSES USING a HOUGH TRANSFORM, then DRAWS them
+It does not identify contours first, but directly uses the canny edge detected frame (different to Picam_12_Ellipse.py)"""
 
 class ContourDetection:
     
@@ -39,9 +45,6 @@ class ContourDetection:
             # I want the text to be in the same colour as the idenity of the object
             text_color = self.color_bgr[color]
             cv2.putText(frame, color, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 2)
-        
-
-    
 
     def capture_frame(self):
         """Capture a frame from the webcam."""
@@ -51,19 +54,17 @@ class ContourDetection:
             return None
         return frame
 
-
-
     def detect_and_draw_contours(self, gray_frame):
         """Detects contours using Canny edge detection and draws them on the image."""
         
         blurred = self.apply_gaussian_blur(gray_frame)
         edges = self.apply_canny_edge_detection(blurred)
-        contours = self.find_contours(edges)
-        frame_copy = self.draw_initial_contours(gray_frame, contours)
-        roi = self.find_largest_roi(contours)
+        #frame_copy = self.draw_initial_contours(gray_frame, edges)
+        frame_copy = gray_frame.copy()
+        roi = self.find_largest_roi(edges)
         
         if roi:
-            frame_copy = self.draw_roi_contours(frame_copy, contours, roi)
+            frame_copy = self.draw_roi_contours(frame_copy, edges, roi)
         
         #self.draw_colored_contours(frame_copy, contours)
         
@@ -79,19 +80,9 @@ class ContourDetection:
         cv2.imshow("Canny Edge Detection", edges)
         return edges
 
-    def find_contours(self, edges):
-        """Find contours in the edge-detected image."""
-        contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        return contours
-
-    def draw_initial_contours(self, gray_frame, contours):
-        """Make a copy of the original grayscale image to draw on it."""
-        frame_copy = cv2.cvtColor(gray_frame, cv2.COLOR_GRAY2BGR)
-        cv2.drawContours(frame_copy, contours, -1, (255, 0, 0), 1)
-        return frame_copy
-
-    def find_largest_roi(self, contours):
+    def find_largest_roi(self, edges):
         """Find the largest rectangular contour and define it as the region of interest (ROI)."""
+        contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         largest_area = 0
         roi = None
         for contour in contours:
@@ -103,42 +94,39 @@ class ContourDetection:
                 roi = (x, y, w, h)
         return roi
 
-    def draw_roi_contours(self, frame_copy, contours, roi):
+    def draw_roi_contours(self, frame_copy, edges, roi):
         """Draw contours within the ROI and highlight nested contours."""
         roi_x, roi_y, roi_w, roi_h = roi
         cv2.rectangle(frame_copy, (roi_x, roi_y), (roi_x + roi_w, roi_y + roi_h), (0, 0, 255), 2)
         
-        
         self.detected_token_contours = []
         
-        single_blocks = [c for c in contour if test_single_block(c)]
+        print("Performing Hough Transform on edge-detected frame")
+        start_time = time.time()
         
-        combined_blocks = [c for c in contour if test_combined_block(c)]
+        # Perform Hough Transform to detect ellipses
+        result = hough_ellipse(edges, accuracy=20, threshold=250, min_size=30, max_size=60)
+        result.sort(order='accumulator')
         
-        # try to unpack the blocs
-        # 
-
+        hough_end_time = time.time()
+        print(f"Hough transform time: {hough_end_time - start_time:.4f} seconds")
         
-        for contour in contours:
-            rect = cv2.minAreaRect(contour)
-            box = cv2.boxPoints(rect)
-            box = np.int32(box)
-            x,y = rect[0][0], rect[0][1]
-            width,height = rect[1][0], rect[1][1]
-            area = width * height
+        # Draw the best fitting ellipses
+        for i, ellipse in enumerate(result):
+            yc, xc, a, b = [int(round(x)) for x in ellipse[1:5]]
+            orientation = ellipse[5]
             
-            #write width and height of rectangle as variables instead of indexing rect all the time.
-            if 300 < area <= 800:
-                print("token contour detected")
-                if roi_x <= x <= roi_x + roi_w and roi_y <= y <= roi_y + roi_h:
-                    print("in else")
-                    cv2.drawContours(frame_copy, [box], 0, (0, 0, 255), 2)
-                    cv2.putText(frame_copy, f"{area:.0f}", (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
-                    
-                    self.detected_token_contours.append(contour)
-                    
-                    
-        print(f"frame type is: {type(frame_copy)}")
+            # Draw the ellipse
+            cy, cx = ellipse_perimeter(yc, xc, a, b, orientation)
+            frame_copy[cy, cx] = (0, 0, 255)
+            
+            # Calculate area and display it
+            area = np.pi * a * b
+            cv2.putText(frame_copy, f"{area:.0f}", (xc, yc), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
+            cv2.putText(frame_copy, f"W: {2*a}, H: {2*b}", (xc, yc + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
+            
+            self.detected_token_contours.append(ellipse)
+        
         return frame_copy
 
     def draw_colored_contours(self, frame_copy, contours):
@@ -231,7 +219,7 @@ class ContourDetection:
                 frame, hsv_frame = self.process_frame()
                 self.draw_contours(frame, self.detected_token_contours, hsv_frame)
             
-                
+                 
 
                 # TESTING CODE
                 #frame = self.show_thresholding()

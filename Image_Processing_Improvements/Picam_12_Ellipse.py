@@ -3,6 +3,7 @@ import cv2
 from skimage.transform import hough_ellipse
 from skimage.draw import ellipse_perimeter
 from skimage.feature import canny
+import time
 
 class ContourDetection:
     
@@ -107,14 +108,24 @@ class ContourDetection:
         
         self.detected_token_contours = []
         
-        for contour in contours:
+        for i, contour in enumerate(contours):
+            if i >= 10:  # Limit the number of contours processed
+                break
+            print(f"Processing contour {i+1}/{len(contours)}")
+            
+            start_time = time.time()
+            
             # Convert the contour to a binary image
             mask = np.zeros(frame_copy.shape[:2], dtype=np.uint8)
             cv2.drawContours(mask, [contour], -1, 255, -1)
             edges = canny(mask)
             
             # Perform Hough Transform to detect ellipses
+            hough_start_time = time.time()
             result = hough_ellipse(edges, accuracy=20, threshold=250, min_size=30, max_size=60)
+            hough_end_time = time.time()
+            print(f"Hough transform time for contour {i+1}: {hough_end_time - hough_start_time:.4f} seconds")
+            
             result.sort(order='accumulator')
             
             # Draw the best fitting ellipse
@@ -133,6 +144,9 @@ class ContourDetection:
                 cv2.putText(frame_copy, f"W: {2*a}, H: {2*b}", (xc, yc + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
                 
                 self.detected_token_contours.append(contour)
+            
+            end_time = time.time()
+            print(f"Total processing time for contour {i+1}: {end_time - start_time:.4f} seconds")
         
         return frame_copy
 
