@@ -2,10 +2,48 @@ import numpy as np
 import cv2
 from sklearn.neighbors import KNeighborsClassifier
 
-class ColourDetectionWithKNN:
+class ContourDetection:
     
-    def __init__(self, k_neighbors=3, webcam_index=1):
+    def __init__(self, webcam_index=1):
         self.webcam = cv2.VideoCapture(webcam_index)
+        self.detected_token_contours = []
+        self.color_ranges = {
+            'red' : ((0, 50, 50), (8, 255, 255)),
+            'orange': ((0, 0, 50), (16, 255, 255)),
+            'yellow': ((16, 50, 50), (39, 255, 255)),
+            'magenta': ((116, 52, 50), (179, 255, 255))
+        }
+        
+        # Define BGR color values for text
+        self.color_bgr = {
+            'red': (0, 0, 255),
+            'orange': (0, 165, 255),
+            'yellow': (0, 255, 255),
+            'magenta': (255, 0, 255),
+            'unknown': (255, 255, 255)  # Default to white for unknown colors
+        }
+        
+    def classify_contour(self, contour, hsv_frame):
+        mask = np.zeros(hsv_frame.shape[:2], dtype=np.uint8)
+        cv2.drawContours(mask, [contour], -1, 255, -1)
+        mean_val = cv2.mean(hsv_frame, mask=mask)[:3]
+        
+        for color, (lower, upper) in self.color_ranges.items():
+            if cv2.inRange(np.uint8([[mean_val]]), np.array(lower), np.array(upper)):
+                return color
+        return 'unknown'
+
+    def draw_contours(self, frame, contours, hsv_frame):
+        for contour in contours:
+            color = self.classify_contour(contour, hsv_frame)
+            cv2.drawContours(frame, [contour], -1, (0, 255, 0), 2)
+            x, y, w, h = cv2.boundingRect(contour)
+            # I want the text to be in the same colour as the idenity of the object
+            text_color = self.color_bgr[color]
+            cv2.putText(frame, color, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, text_color, 2)
+        
+
+    
 
     def capture_frame(self):
         """Capture a frame from the webcam."""
@@ -15,83 +53,38 @@ class ColourDetectionWithKNN:
             return None
         return frame
 
-    def preprocess_and_segment_with_canny(self, frame):
-        """Applies Watershed algorithm to separate touching tokens, starting with a Canny edge image."""
-        # Ensure the input frame is binary (Canny result)
-        if len(frame.shape) > 2:
-            print("Converting to grayscale")
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            edges = cv2.Canny(gray, 100, 200)
-        else:
-            edges = frame  # If already a binary image (Canny result)
-
-        cv2.imshow("Canny Edges", edges)  # Display Canny edges
-
-        # Morphological opening to remove noise
-        kernel = np.ones((3, 3), np.uint8)
-        opening = cv2.morphologyEx(edges, cv2.MORPH_OPEN, kernel, iterations=2)
-        cv2.imshow("Morphological Opening", opening)  # Display morphological opening
-
-        # Background detection
-        sure_bg = cv2.dilate(opening, kernel, iterations=3)
-        cv2.imshow("Sure Background", sure_bg)  # Display sure background
-
-        # Distance transform to find sure foreground
-        dist_transform = cv2.distanceTransform(opening, cv2.DIST_L2, 5)
-        cv2.imshow("Distance Transform", dist_transform)  # Display distance transform
-        _, sure_fg = cv2.threshold(dist_transform, 0.5 * dist_transform.max(), 255, 0)
-        cv2.imshow("Sure Foreground", sure_fg)  # Display sure foreground
-
-        # Finding unknown region
-        sure_fg = np.uint8(sure_fg)
-        unknown = cv2.subtract(sure_bg, sure_fg)
-        cv2.imshow("Unknown Region", unknown)  # Display unknown region
-
-        # Marker labeling
-        _, markers = cv2.connectedComponents(sure_fg)
-        markers += 1  # Ensure background is not zero
-        markers[unknown == 255] = 0  # Mark unknown region
-
-        # Ensure markers are of type CV_32SC1 (32-bit integer array)
-        markers = np.int32(markers)
-
-        # Ensure frame_copy is a color image (3-channel) for watershed to work
-        if len(frame.shape) == 2:  # If input is grayscale, convert to 3-channel BGR
-            frame_copy = cv2.cvtColor(frame, cv2.COLOR_GRAY2BGR)
-        else:
-            frame_copy = frame.copy()
-
-        # Apply Watershed algorithm
-        cv2.watershed(frame_copy, markers)
-        frame_copy[markers == -1] = [0, 0, 255]  # Mark boundaries in red
-
-        # Extract refined contours
-        contours, _ = cv2.findContours((markers > 1).astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-        # Show a frame named watershed with the frame_copy and detected contours
-        cv2.drawContours(frame_copy, contours, -1, (0, 255, 0), 3)
-        cv2.imshow("Watershed", frame_copy)
-
-        return contours
-
 
 
     def detect_and_draw_contours(self, gray_frame):
         """Detects contours using Canny edge detection and draws them on the image."""
         
+        # Apply a gaussian blurr to gray_scale image
         blurred = self.apply_gaussian_blur(gray_frame)
+        
+        # Apply adaptive thresholding to reduce noise
+        thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY, 11, 2)  # Adaptive thresholding
+        cv2.imshow("Thresholded", thresh)
+        
+        #Perform Canny edge detection on the blurred image
         edges = self.apply_canny_edge_detection(blurred)
-        thresh = self.apply_adaptive_thresholding_detection(blurred)
-        contours = self.find_contours(edges)
-        frame_copy = self.draw_initial_contours(gray_frame, contours)
-        roi = self.find_largest_roi(contours)
         
+        #Find the contours once with the thresholded image and once with the canny edge detected image
+        contours_thresh = self.find_contours(thresh)
+        contours_canny = self.find_contours(edges)
         
+        # Draw initial blue outlines of detected contours for both thresholded and canny edge detected images
+        frame_copy = self.draw_initial_contours(gray_frame, contours_thresh)
+        cv2.imshow("frame copy thresholded", frame_copy)
+        
+        frame_copy_gray = cv2.cvtColor(frame_copy, cv2.COLOR_BGR2GRAY)
+        frame_copy = self.draw_initial_contours(frame_copy_gray, contours_canny)
+        cv2.imshow("frame copy canny", frame_copy)
+        
+        # Use the canny contour to find the ROI (works better than thresholding)
+        roi = self.find_largest_roi(contours_canny)
         if roi:
-            print("ROI DETECTED")
-            contours = self.preprocess_and_segment_with_canny(thresh) #this would use a canny edge detection as passed into the segment
-            filtered_contours = self.filter_contours_by_size(contours)
-            frame_copy = self.draw_roi_contours(frame_copy, filtered_contours, roi)
+            # Identify tokens using the .draw_roi_contours method.
+            frame_copy = self.draw_roi_contours(frame_copy, contours_canny, roi)
         
         #self.draw_colored_contours(frame_copy, contours)
         
@@ -103,15 +96,9 @@ class ColourDetectionWithKNN:
 
     def apply_canny_edge_detection(self, blurred):
         """Use Canny edge detection to find edges."""
-        edges = cv2.Canny(blurred, 80, 100)
+        edges = cv2.Canny(blurred, 50, 100)
         cv2.imshow("Canny Edge Detection", edges)
         return edges
-    
-    def apply_adaptive_thresholding_detection(self, blurred):
-        """Use Canny edge detection to find edges."""
-        thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY, 11, 2)  # Adaptive 
-        cv2.imshow("Canny Edge Detection", thresh)
-        return thresh
 
     def find_contours(self, edges):
         """Find contours in the edge-detected image."""
@@ -125,7 +112,7 @@ class ColourDetectionWithKNN:
         return frame_copy
 
     def find_largest_roi(self, contours):
-        """Find the largest rectangulaedr contour and define it as the region of interest (ROI)."""
+        """Find the largest rectangular contour and define it as the region of interest (ROI)."""
         largest_area = 0
         roi = None
         for contour in contours:
@@ -136,45 +123,37 @@ class ColourDetectionWithKNN:
                 x, y, w, h = cv2.boundingRect(contour)
                 roi = (x, y, w, h)
         return roi
-    
-    def filter_contours_by_size(self, contours, min_size=300, max_size=9000, width=28, height=55, tolerance=10):
-        """Filters contours based on known token size and aspect ratio."""
-        filtered_contours = []
-        aspect_ratio_range = (width / height, height / width)  # Account for rotation
-        
-        for contour in contours:
-            rect = cv2.minAreaRect(contour)
-            (w, h) = rect[1]
-            
-            if w == 0 or h == 0:
-                continue  # Ignore invalid contours
-            
-            area = w * h
-            aspect_ratio = min(w/h, h/w)
-            
-            if min_size <= area <= max_size and aspect_ratio_range[0] - 0.1 <= aspect_ratio <= aspect_ratio_range[1] + 0.1:
-                filtered_contours.append(contour)
-        
-        return filtered_contours
 
     def draw_roi_contours(self, frame_copy, contours, roi):
-        """Draws rotated bounding boxes within the ROI."""
+        """Draw contours within the ROI and highlight nested contours."""
+        # Takes the ROI and draws a rectangle around it
         roi_x, roi_y, roi_w, roi_h = roi
         cv2.rectangle(frame_copy, (roi_x, roi_y), (roi_x + roi_w, roi_y + roi_h), (0, 0, 255), 2)
         
+        # Empty list in which to store detected token contours
+        self.detected_token_contours = []
+        
+        # Iterate through contours and draw them if they are within the ROI
         for contour in contours:
+            # minAreaRect is better than cv2.rectangle for rotated rectangles
             rect = cv2.minAreaRect(contour)
             box = cv2.boxPoints(rect)
             box = np.int32(box)
+            x,y = rect[0][0], rect[0][1]
+            width,height = rect[1][0], rect[1][1]
+            area = width * height
             
-            # Check if contour is inside ROI
-            if roi_x <= rect[0][0] <= roi_x + roi_w and roi_y <= rect[0][1] <= roi_y + roi_h:
-                cv2.drawContours(frame_copy, [box], 0, (0, 255, 0), 2)
-                
-                # Display area for debugging
-                area = rect[1][0] * rect[1][1]
-                cv2.putText(frame_copy, f"{area:.0f}", (int(rect[0][0]), int(rect[0][1])),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
+            # write width and height of rectangle as variables instead of indexing rect all the time.
+            # if area is within a certain range, draw the contour and write the area on the image
+            if 300 < area <= 800:
+                if roi_x <= x <= roi_x + roi_w and roi_y <= y <= roi_y + roi_h:
+                    cv2.drawContours(frame_copy, [box], 0, (0, 0, 255), 2)
+                    cv2.putText(frame_copy, f"{area:.0f}", (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
+                    
+                    self.detected_token_contours.append(contour)
+                    
+                    
+        print(f"frame type is: {type(frame_copy)}")
         return frame_copy
 
     def draw_colored_contours(self, frame_copy, contours):
@@ -198,11 +177,11 @@ class ColourDetectionWithKNN:
             return None, None, None
 
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
         frame_with_canny_contours = self.detect_and_draw_contours(gray_frame)
-        #cv2.imshow("contours detected", frame_with_contours)
-        return frame_with_canny_contours
-
+        cv2.imshow("contours detected", frame_with_canny_contours)
+        return frame_with_canny_contours, hsv_frame
     
     def show_thresholding(self):
         
@@ -259,27 +238,53 @@ class ColourDetectionWithKNN:
         return locally_thresholded
 
 
+    def compute_confidence_scores(self, contours_canny, contours_thresh):
+        """Compute confidence scores for contours detected using both Canny and adaptive thresholding."""
+        combined_contours = []
+        for contour in contours_canny:
+            rect = cv2.minAreaRect(contour)
+            width, height = rect[1][0], rect[1][1]
+            area = width * height
+            if 300 < area <= 800:
+                combined_contours.append((contour, 1))  # Initial confidence score is 1
+        for contour in contours_thresh:
+            rect = cv2.minAreaRect(contour)
+            width, height = rect[1][0], rect[1][1]
+            area = width * height
+            if 300 < area <= 800:
+                found = False
+                for i, (existing_contour, score) in enumerate(combined_contours):
+                    if cv2.matchShapes(contour, existing_contour, cv2.CONTOURS_MATCH_I1, 0.0) < 0.1:
+                        combined_contours[i] = (existing_contour, score + 1)  # Increase confidence score
+                        found = True
+                        break
+                if not found:
+                    combined_contours.append((contour, 1))  # Initial confidence score is 1
+        return combined_contours
+
+    def draw_confidence_contours(self, frame, combined_contours):
+        """Draw contours with their confidence scores on the image."""
+        for contour, score in combined_contours:
+            color = (0, 255, 0) if score > 1 else (0, 0, 255)  # Green for high confidence, red for low confidence
+            cv2.drawContours(frame, [contour], -1, color, 2)
+            x, y, w, h = cv2.boundingRect(contour)
+            cv2.putText(frame, f"Conf: {score}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
     def run(self):
         """Run the real-time object detection and classification pipeline."""
         try:
             while True:
-                # ORIGINAL CODE - UNCOMMENT
-                frame = self.process_frame()
-                
-                
-                # TESTING CODE
-                #frame = self.show_thresholding()
-                
-                
+                frame, hsv_frame = self.process_frame()
                 if frame is not None:
-                    # ORIGINAL CODE  - UNCOMMENT
+                    gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    blurred = self.apply_gaussian_blur(gray_frame)
+                    thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
+                    edges = self.apply_canny_edge_detection(blurred)
+                    contours_thresh = self.find_contours(thresh)
+                    contours_canny = self.find_contours(edges)
+                    combined_contours = self.compute_confidence_scores(contours_canny, contours_thresh)
+                    self.draw_confidence_contours(frame, combined_contours)
                     self.show_result(frame)
-                    
-                    
-                    #TESTING CODE
-                    #print("test running") 
-                                      
-                
                 if cv2.waitKey(10) & 0xFF == ord('q'):
                     break
         finally:
@@ -292,5 +297,5 @@ class ColourDetectionWithKNN:
 
 # Run the program
 if __name__ == "__main__":
-    color_detection = ColourDetectionWithKNN(k_neighbors=3)
+    color_detection = ContourDetection()
     color_detection.run()

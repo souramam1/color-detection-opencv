@@ -8,6 +8,7 @@ class ContourDetection:
         self.webcam = cv2.VideoCapture(webcam_index)
         self.detected_token_contours = []
         self.color_ranges = {
+            'red' : ((0, 50, 50), (8, 255, 255)),
             'orange': ((0, 0, 50), (16, 255, 255)),
             'yellow': ((16, 50, 50), (39, 255, 255)),
             'magenta': ((116, 52, 50), (179, 255, 255))
@@ -15,6 +16,7 @@ class ContourDetection:
         
         # Define BGR color values for text
         self.color_bgr = {
+            'red': (0, 0, 255),
             'orange': (0, 165, 255),
             'yellow': (0, 255, 255),
             'magenta': (255, 0, 255),
@@ -57,13 +59,20 @@ class ContourDetection:
         """Detects contours using Canny edge detection and draws them on the image."""
         
         blurred = self.apply_gaussian_blur(gray_frame)
+        thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY, 11, 2)  # Adaptive thresholding
+        cv2.imshow("Thresholded", thresh)
         edges = self.apply_canny_edge_detection(blurred)
-        contours = self.find_contours(edges)
-        frame_copy = self.draw_initial_contours(gray_frame, contours)
-        roi = self.find_largest_roi(contours)
+        contours_thresh = self.find_contours(thresh)
+        contours_canny = self.find_contours(edges)
+        frame_copy = self.draw_initial_contours(gray_frame, contours_thresh)
+        cv2.imshow("frame copy thresholded", frame_copy)
+        frame_copy_gray = cv2.cvtColor(frame_copy, cv2.COLOR_BGR2GRAY)
+        frame_copy = self.draw_initial_contours(frame_copy_gray, contours_canny)
+        cv2.imshow("frame copy canny", frame_copy)
+        roi = self.find_largest_roi(contours_canny)
         
         if roi:
-            frame_copy = self.draw_roi_contours(frame_copy, contours, roi)
+            frame_copy = self.draw_roi_contours(frame_copy, contours_canny, roi)
         
         #self.draw_colored_contours(frame_copy, contours)
         
@@ -75,7 +84,7 @@ class ContourDetection:
 
     def apply_canny_edge_detection(self, blurred):
         """Use Canny edge detection to find edges."""
-        edges = cv2.Canny(blurred, 80, 100)
+        edges = cv2.Canny(blurred, 20, 100)
         cv2.imshow("Canny Edge Detection", edges)
         return edges
 
@@ -111,12 +120,7 @@ class ContourDetection:
         
         self.detected_token_contours = []
         
-        single_blocks = [c for c in contour if test_single_block(c)]
-        
-        combined_blocks = [c for c in contour if test_combined_block(c)]
-        
-        # try to unpack the blocs
-        # 
+
 
         
         for contour in contours:
@@ -165,7 +169,7 @@ class ContourDetection:
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
         frame_with_canny_contours = self.detect_and_draw_contours(gray_frame)
-        #cv2.imshow("contours detected", frame_with_contours)
+        cv2.imshow("contours detected", frame_with_canny_contours)
         return frame_with_canny_contours, hsv_frame
     
     def show_thresholding(self):
