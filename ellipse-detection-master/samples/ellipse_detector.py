@@ -2,13 +2,14 @@
 print("Hello, World!")
 import sys
 import os
-# Add the parent directory to the Python path
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-sys.path.append(parent_dir)
-print("Python path:", sys.path)
 
 import cv2
+
+# Add the parent directory of 'ellipse_detection' to the Python path
+parent_dir = r"C:\Users\MaiaRamambason\OneDrive - Imperial College London\Desktop\Year5\UCL_BIP\Object_Detection_Trial\color-detection-opencv\ellipse-detection-master"
+sys.path.append(parent_dir)
+print("Python path:", sys.path)
 
 # Try to import the ellipse_detection module and catch any errors
 try:

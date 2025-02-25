@@ -1,8 +1,8 @@
 import cv2
 import numpy as np
 
-#import segment
-from .segment import Segment
+import segment_class
+from segment_class import Segment
 
 
 class SegmentDetector(object):

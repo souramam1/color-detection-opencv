@@ -1,67 +1,48 @@
-import cv2
-import numpy as np
-from skimage import color, img_as_ubyte
+import matplotlib.pyplot as plt
+
+import time
+from skimage import data, color, img_as_ubyte
 from skimage.feature import canny
 from skimage.transform import hough_ellipse
 from skimage.draw import ellipse_perimeter
 
-# Load picture using OpenCV
-image_path = r"C:\Users\MaiaRamambason\OneDrive - Imperial College London\Desktop\Year5\UCL_BIP\Object_Detection_Trial\color-detection-opencv\Image_Processing_Improvements\captured_image.jpg"
-image_rgb = cv2.imread(image_path)
-
-if image_rgb is None:
-    print("Error: Could not load image.")
-else:
-    print("Image loaded successfully.")
-
-# Convert to grayscale
-cv2.imshow('Original Image', image_rgb)
-image_gray = cv2.cvtColor(image_rgb, cv2.COLOR_BGR2GRAY)
-
-# Apply Gaussian blur
-blurred = cv2.GaussianBlur(image_gray, (5, 5), 0)
-
-# Perform Canny edge detection
-edges = cv2.Canny(blurred, 80, 100)
-
-# Convert edges to a format suitable for skimage
-edges_skimage = img_as_ubyte(edges)
+# Load picture, convert to grayscale and detect edges
+image_rgb = data.coffee()[0:220, 160:420]
+image_gray = color.rgb2gray(image_rgb)
+edges = canny(image_gray, sigma=2.0, low_threshold=0.55, high_threshold=0.8)
 
 # Perform a Hough Transform
-result = hough_ellipse(edges_skimage, accuracy=20, threshold=250, min_size=100, max_size=120)
-result.size = 0
+# The accuracy corresponds to the bin size of the histogram for minor axis lengths.
+# A higher `accuracy` value will lead to more ellipses being found, at the
+# cost of a lower precision on the minor axis length estimation.
+# A higher `threshold` will lead to less ellipses being found, filtering out those
+# with fewer edge points (as found above by the Canny detector) on their perimeter.
+hough_s_time = time.time()
+result = hough_ellipse(edges, accuracy=20, threshold=250, min_size=100, max_size=120)
+hough_e_time =  time.time()
+print(f"Hough transform took {hough_e_time - hough_s_time:.4f} seconds")
+result.sort(order='accumulator')
 
-# Check if any ellipses were found
-if result.size > 0:
-    result.sort(order='accumulator')
+# Estimated parameters for the ellipse
+best = list(result[-1])
+yc, xc, a, b = (int(round(x)) for x in best[1:5])
+orientation = best[5]
 
-    # Estimated parameters for the ellipse
-    best = list(result[-1])
-    yc, xc, a, b = (int(round(x)) for x in best[1:5])
-    orientation = best[5]
+# Draw the ellipse on the original image
+cy, cx = ellipse_perimeter(yc, xc, a, b, orientation)
+image_rgb[cy, cx] = (0, 0, 255)
+# Draw the edge (white) and the resulting ellipse (red)
+edges = color.gray2rgb(img_as_ubyte(edges))
+edges[cy, cx] = (250, 0, 0)
 
-    # Draw the ellipse on the original image
-    cy, cx = ellipse_perimeter(yc, xc, a, b, orientation)
-    image_rgb[cy, cx] = (0, 0, 255)
-    # Draw the edge (white) and the resulting ellipse (red)
-    edges_rgb = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
-    edges_rgb[cy, cx] = (0, 0, 255)
+fig2, (ax1, ax2) = plt.subplots(
+    ncols=2, nrows=1, figsize=(8, 4), sharex=True, sharey=True
+)
 
-    # Concatenate images for side-by-side display
-    combined_image = np.hstack((image_rgb, edges_rgb))
+ax1.set_title('Original picture')
+ax1.imshow(image_rgb)
 
-    # Display the images using OpenCV
-    cv2.imshow('Original and Edges with Ellipse', combined_image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-else:
-    print("No ellipses were found.")
-    
-    # Concatenate images for side-by-side display
-    edges_rgb = cv2.cvtColor(edges, cv2.COLOR_GRAY2BGR)
-    combined_image = np.hstack((image_rgb, edges_rgb))
+ax2.set_title('Edge (white) and result (red)')
+ax2.imshow(edges)
 
-    # Display the images using OpenCV
-    cv2.imshow('Original and Canny Edges', combined_image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+plt.show()

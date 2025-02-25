@@ -1,8 +1,8 @@
 import numpy as np
 import cv2
 
-from .segment import Segment
-from .segment_pair import SegmentPair
+from segment_class import Segment
+from segment_pair_class import SegmentPair
 
 
 class EllipseCenterEstimator(object):

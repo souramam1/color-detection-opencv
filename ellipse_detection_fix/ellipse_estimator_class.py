@@ -2,7 +2,7 @@ import math
 
 import numpy as np
 
-from .ellipse import Ellipse
+from ellipse_class import Ellipse
 
 
 class EllipseEstimator(object):

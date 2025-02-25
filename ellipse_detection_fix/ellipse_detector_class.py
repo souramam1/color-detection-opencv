@@ -1,9 +1,9 @@
 import builtins
 
-from .segment_detector import SegmentDetector
-from .ellipse_candidate_maker import EllipseCandidateMaker
-from .ellipse_estimator import EllipseEstimator
-from .ellipse_merger import EllipseMerger
+from segment_detector_class import SegmentDetector
+from ellipse_candidate_maker_class import EllipseCandidateMaker
+from ellipse_estimator_class import EllipseEstimator
+from ellipse_merger_class import EllipseMerger
 
 
 class EllipseDetector(object):
