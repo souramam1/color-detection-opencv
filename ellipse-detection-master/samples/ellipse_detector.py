@@ -1,11 +1,36 @@
 #  coding: utf-8
-
+print("Hello, World!")
 import sys
-sys.path.append('..')
+import os
+# Add the parent directory to the Python path
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+sys.path.append(parent_dir)
+print("Python path:", sys.path)
 
 import cv2
 
-import ellipse_detection as ed
+# Try to import the ellipse_detection module and catch any errors
+try:
+    import ellipse_detection as ed
+    print("ellipse_detection module imported successfully.")
+except ImportError as e:
+    print("Failed to import ellipse_detection module:", e)
+    sys.exit(1)
+    
+# Check if the imports are successful
+print("Checking imports...")
+assert 'Ellipse' in dir(ed), "Failed to import Ellipse"
+assert 'Segment' in dir(ed), "Failed to import Segment"
+assert 'SegmentPair' in dir(ed), "Failed to import SegmentPair"
+assert 'EllipseCandidate' in dir(ed), "Failed to import EllipseCandidate"
+assert 'SegmentDetector' in dir(ed), "Failed to import SegmentDetector"
+assert 'EllipseCenterEstimator' in dir(ed), "Failed to import EllipseCenterEstimator"
+assert 'EllipseCandidateMaker' in dir(ed), "Failed to import EllipseCandidateMaker"
+assert 'EllipseEstimator' in dir(ed), "Failed to import EllipseEstimator"
+assert 'EllipseMerger' in dir(ed), "Failed to import EllipseMerger"
+assert 'EllipseDetector' in dir(ed), "Failed to import EllipseDetector"
+print("All imports are successful.")
 
 
 def main():
