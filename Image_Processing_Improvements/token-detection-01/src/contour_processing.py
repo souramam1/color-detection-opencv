@@ -26,7 +26,7 @@ class ContourProcessing:
         if roi:
             #goes through all contours and identifies ones in the roi of right size
             frame_with_contours = self.draw_roi_contours(hsv_frame, contours_canny, roi)
-        return frame_with_contours
+        return frame_with_contours, roi
 
     def apply_gaussian_blur(self, gray_frame):
         return cv2.GaussianBlur(gray_frame, (5, 5), 0)
@@ -55,6 +55,7 @@ class ContourProcessing:
                 largest_area = area
                 x, y, w, h = cv2.boundingRect(contour)
                 roi = (x, y, w, h)
+                print(f"ROI: {roi}")
         return roi
 
     def draw_roi_contours(self, frame_copy, contours, roi):
@@ -94,10 +95,10 @@ class ContourProcessing:
         
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         bgr_frame = frame
-        hsv_frame_with_canny_contours = self.detect_and_draw_contours(gray_frame,bgr_frame)
+        hsv_frame_with_canny_contours, roi = self.detect_and_draw_contours(gray_frame,bgr_frame)
         
         cv2.imshow("Bounded contours detected", hsv_frame_with_canny_contours)
-        return hsv_frame_with_canny_contours, bgr_frame
+        return hsv_frame_with_canny_contours, bgr_frame, roi
 
     def run(self):
         try:

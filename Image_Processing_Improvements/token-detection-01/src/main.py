@@ -21,8 +21,8 @@ class TokenDetectionSystem:
             while True:
                 frame = self.camera.capture_frame()
                 if frame is not None:
-                    contoured_frame, bgr_frame = self.contour_processing.process_frame(frame)
-                    self.color_detection.draw_contours(contoured_frame, self.contour_processing.detected_token_contours, bgr_frame)
+                    contoured_frame, bgr_frame, roi = self.contour_processing.process_frame(frame)
+                    self.color_detection.draw_contours(contoured_frame,roi, self.contour_processing.detected_token_contours, bgr_frame)
                     self.contour_processing.show_result(contoured_frame)
 
                 if cv2.waitKey(10) & 0xFF == ord('q'):
