@@ -5,7 +5,7 @@ class HSVCalibrator:
     def __init__(self, camera_index=1):
         self.cap = cv2.VideoCapture(camera_index)
         self.calibrated_values = {}
-        self.colors = ["green", "orange", "yellow", "magenta"]
+        self.colors = ["red", "orange", "yellow", "magenta"]
     
     def nothing(self, x):
         pass

@@ -58,20 +58,33 @@ class ContourDetection:
     def detect_and_draw_contours(self, gray_frame):
         """Detects contours using Canny edge detection and draws them on the image."""
         
+        # Apply a gaussian blurr to gray_scale image
         blurred = self.apply_gaussian_blur(gray_frame)
+        
+        # Apply adaptive thresholding to reduce noise
         thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY, 11, 2)  # Adaptive thresholding
         cv2.imshow("Thresholded", thresh)
+        
+        #Perform Canny edge detection on the blurred image - DOES NOT USE ADAPTIVE THRESHOLDING
         edges = self.apply_canny_edge_detection(blurred)
+        
+        #Find the contours once with the thresholded image and once with the canny edge detected image
         contours_thresh = self.find_contours(thresh)
         contours_canny = self.find_contours(edges)
-        frame_copy = self.draw_initial_contours(gray_frame, contours_thresh)
-        cv2.imshow("frame copy thresholded", frame_copy)
-        frame_copy_gray = cv2.cvtColor(frame_copy, cv2.COLOR_BGR2GRAY)
-        frame_copy = self.draw_initial_contours(frame_copy_gray, contours_canny)
-        cv2.imshow("frame copy canny", frame_copy)
-        roi = self.find_largest_roi(contours_canny)
         
+        # Draw initial blue outlines of detected contours for both thresholded and canny edge detected images
+        frame_copy = self.draw_initial_contours(gray_frame, contours_thresh)
+        cv2.imshow("frame copy thresholded contours", frame_copy)
+        
+        
+        frame_copy = self.draw_initial_contours(gray_frame, contours_canny)
+        cv2.imshow("frame copy canny contours", frame_copy)
+        
+        # Use the canny contour to find the ROI (works better than thresholding)
+        roi = self.find_largest_roi(contours_canny)
         if roi:
+            # Identify tokens using the .draw_roi_contours method.
+            # Which ever set of contours is passed into the method will be drawn on the image
             frame_copy = self.draw_roi_contours(frame_copy, contours_canny, roi)
         
         #self.draw_colored_contours(frame_copy, contours)
@@ -114,16 +127,16 @@ class ContourDetection:
 
     def draw_roi_contours(self, frame_copy, contours, roi):
         """Draw contours within the ROI and highlight nested contours."""
+        # Takes the ROI and draws a rectangle around it
         roi_x, roi_y, roi_w, roi_h = roi
         cv2.rectangle(frame_copy, (roi_x, roi_y), (roi_x + roi_w, roi_y + roi_h), (0, 0, 255), 2)
         
-        
+        # Empty list in which to store detected token contours
         self.detected_token_contours = []
         
-
-
-        
+        # Iterate through contours and draw them if they are within the ROI
         for contour in contours:
+            # minAreaRect is better than cv2.rectangle for rotated rectangles
             rect = cv2.minAreaRect(contour)
             box = cv2.boxPoints(rect)
             box = np.int32(box)
@@ -131,11 +144,11 @@ class ContourDetection:
             width,height = rect[1][0], rect[1][1]
             area = width * height
             
-            #write width and height of rectangle as variables instead of indexing rect all the time.
+            # write width and height of rectangle as variables instead of indexing rect all the time.
+            # if area is within a certain range, draw the contour and write the area on the image
             if 300 < area <= 800:
-                print("token contour detected")
                 if roi_x <= x <= roi_x + roi_w and roi_y <= y <= roi_y + roi_h:
-                    print("in else")
+                    print(f"width is {width} and height is {height}")
                     cv2.drawContours(frame_copy, [box], 0, (0, 0, 255), 2)
                     cv2.putText(frame_copy, f"{area:.0f}", (int(x), int(y)), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
                     
@@ -161,13 +174,17 @@ class ContourDetection:
 
     def process_frame(self):
         """Main pipeline: Detect ROI, detect objects, classify colors."""
+        
+        # Capture a frame from the webcam
         frame = self.capture_frame()
         if frame is None:
             return None, None, None
-
+        
+        # Convert the frame to grayscale and HSV
         gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         
+        # Detect contours using Canny edge detection and draw them on the image
         frame_with_canny_contours = self.detect_and_draw_contours(gray_frame)
         cv2.imshow("contours detected", frame_with_canny_contours)
         return frame_with_canny_contours, hsv_frame
