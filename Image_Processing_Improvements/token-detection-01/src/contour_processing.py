@@ -88,8 +88,7 @@ class ContourProcessing:
         cv2.imshow("Contour detection with Canny", frame)
 
     def process_frame(self, frame):
-        
-        
+    
         if frame is None:
             return None, None, None
         

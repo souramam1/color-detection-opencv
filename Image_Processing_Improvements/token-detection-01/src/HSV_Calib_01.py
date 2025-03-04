@@ -5,7 +5,7 @@ class HSVCalibrator:
     def __init__(self, camera_index=1):
         self.cap = cv2.VideoCapture(camera_index)
         self.calibrated_values = {}
-        self.colors = ["red", "orange", "yellow", "magenta"]
+        self.colors = ["yellow", "green", "cyan", "magenta"]
     
     def nothing(self, x):
         pass
@@ -79,11 +79,7 @@ class HSVCalibrator:
         image_patch = frame[from_row:from_row + patch_size, from_column:from_column + patch_size]
         image_max = (frame * 1.0 / image_patch.max(axis=(0, 1))).clip(0, 1)
         image_max = (image_max * 255).astype(np.uint8)
-            
-        #     # Convert images from RGB to BGR for OpenCV display
-        # image_with_rectangles = cv2.cvtColor(image_with_rectangles, cv2.COLOR_RGB2BGR)
-        # image_max = cv2.cvtColor(image_max, cv2.COLOR_RGB2BGR)
-        
+     
         return image_with_rectangles, image_max
     
     def run(self):
