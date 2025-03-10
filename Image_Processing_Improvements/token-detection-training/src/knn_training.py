@@ -8,7 +8,9 @@ import cv2
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 import os
-from pickle import dump
+from pickle import dump, load
+from datetime import datetime
+
 
 class KNNTrainer:
     def __init__(self, csv_path):
@@ -30,7 +32,6 @@ class KNNTrainer:
 
     def show_csv(self):
         print("Data extracted from CSV:")
-        # #if an error is generated here, continue with the code
         # try:
         #     """Plot the hue against the saturation with each colored dot having the same color as its label using matplotlib."""
         #     plt.scatter(self.X[:, 0], self.X[:, 1], c=self.y, cmap='hsv', alpha=0.5)
@@ -91,9 +92,22 @@ class KNNTrainer:
         
     def save_model(self):
         """Save the trained KNN model to a file."""
-        pass
         
-
+        #Define the models folder within token-detection-training
+        save_folder = r"Image_Processing_Improvements\token-detection-training\models"
+        os.makedirs(save_folder, exist_ok=True)
+        
+        #Date
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        #Define the full path for the file
+        file_path = os.path.join(save_folder, f"knn_model_{current_date}.pkl")        
+         
+        # Save model       
+        with open(file_path, "wb") as file:
+            dump(self.knn, file)
+        
+        
+    
     def run(self):
         """Run the full pipeline."""
         self.extract_features()
@@ -102,6 +116,7 @@ class KNNTrainer:
         best_k = self.cross_validate()
         self.train_knn(best_k)
         self.test_trained_knn()
+        self.save_model()
 
 # Example usage
 if __name__ == "__main__":
