@@ -98,13 +98,14 @@ class KNNTrainer:
         os.makedirs(save_folder, exist_ok=True)
         
         #Date
-        current_date = datetime.now().strftime("%Y-%m-%d")
+        current_date = datetime.now().strftime("%Y-%m-%d-%H-%M")
         #Define the full path for the file
         file_path = os.path.join(save_folder, f"knn_model_{current_date}.pkl")        
          
         # Save model       
         with open(file_path, "wb") as file:
             dump(self.knn, file)
+        print("Model saved to models folder")
         
         
     
@@ -114,7 +115,7 @@ class KNNTrainer:
         self.show_csv()
         self.shuffle_split_data()
         best_k = self.cross_validate()
-        self.train_knn(best_k)
+        self.train_knn(5)
         self.test_trained_knn()
         self.save_model()
 

@@ -17,7 +17,7 @@ from white_patch_capture import WhitePatchCapture
 
 class ModelTester:
     
-    def __init__(self, output_folder):
+    def __init__(self):
         self.knn = None
         self.camera = CameraLabelling()
         self.white_patch_capture = WhitePatchCapture()
@@ -103,68 +103,87 @@ class ModelTester:
         return isolated_token_rectangles
         
             
-    def classify_and_label_tokens(self, camera_frame, isolated_token_rectangles):
+    def classify_and_label_tokens(self, camera_frame, rectangles):
         """Classify each isolated token using the KNN model and label it with its predicted color."""
         
         # Load the trained KNN model
-        model_path = r"Image_Processing_Improvements\token-detection-training\models\knn_model_2025-03-10.pkl"
+        model_path = r"Image_Processing_Improvements\token-detection-training\models\knn_model_2025-03-10-16-09.pkl"
         with open(model_path, "rb") as file:
             self.knn = load(file)
 
         # Calculate time taken for this for loop
         start_time = time.time()
+        
+        classifications = [] #store classification results
+        
         # Iterate through each detected token
-        for rect in isolated_token_rectangles:
+        for rect in rectangles:
             
             box = cv2.boxPoints(rect)  # Get the four corner points of the rotated rect
             box = np.int32(box)  # Convert to integer
-            x, y = int(rect[0][0]), int(rect[0][1])  # Center of the rectangle
+            centre, size, angle = rect
+            x, y = int(centre[0]), int(centre[1])  # Center of the rectangle
+            width, height = int(size[0]), int(size[1])
 
             # Get width and height of the bounding box
-            width, height = int(rect[1][0]), int(rect[1][1])
+           
 
             # Define destination points for perspective transform
             dst_pts = np.array(
                 [[0, height-1],
                  [0, 0], 
                  [width-1, 0],
-                 [width-1, height-1]], dtype="float32")
+                 [width-1, height-1]
+                 ], dtype="float32")
 
-            # Order the points to correctly apply perspective transform
-            rect_pts = np.array(sorted(box, key=lambda p: (p[1], p[0])), dtype="float32")  # Sort by y, then x
 
             # Compute the transformation matrix
-            matrix = cv2.getPerspectiveTransform(rect_pts, dst_pts)
+            matrix = cv2.getPerspectiveTransform(np.float32(box), dst_pts)
 
             # Apply the transformation to get a properly rotated ROI
-            token_roi = cv2.warpPerspective(camera_frame, matrix, (width, height))
+            isolated_token = cv2.warpPerspective(camera_frame, matrix, (width, height))
+            print(f"token roi is : {isolated_token}")
 
             # Convert to HSV
-            hsv_roi = cv2.cvtColor(token_roi, cv2.COLOR_BGR2HSV)
+            hsv_roi = cv2.cvtColor(isolated_token, cv2.COLOR_BGR2HSV)
             
             
-            features = self.identify_token_features(hsv_roi,token_roi)
+            features = self.identify_token_features(hsv_roi, isolated_token)
 
             # Predict the color label using the KNN model
             predicted_label = self.knn.predict(features)[0]
+            print(f"predicted label is: {predicted_label}")
+            
+            # Store the classification results
+            classifications.append((box, (x, y), predicted_label))
 
-
+        for box, (x,y), predicted_label in classifications:
             # Draw the label on the frame
             cv2.drawContours(camera_frame, [box], 0, (0, 255, 0), 2)  # Green rectangle around the token
             cv2.putText(camera_frame, predicted_label, (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
-
         end_time = time.time()
         classifying_t = end_time - start_time
         print(f"classifying time is: {classifying_t}")
+        
         return camera_frame
 
     def identify_token_features(self, hsv_roi,token_roi):
+        
+        # # Show where the roi has been selected (check)
+        # cv2.imshow("hsv roi!", hsv_roi)
+        # cv2.imshow("bgr roi!", token_roi)        
+        # cv2.waitKey(0)
+        
         # Compute the mean HSV and RGB values within the token
         mean_hsv = np.mean(hsv_roi.reshape(-1, 3), axis=0)
         mean_rgb = np.mean(token_roi.reshape(-1, 3), axis=0)
+        
+        print(f"mean hsv: {mean_hsv}")
+        print(f"mean_rgb: {mean_rgb}")
 
-        # Create feature array: [Hue, Saturation, Value, Red, Green, Blue]
+        # Create token's feature array: [Hue, Saturation, Value, Red, Green, Blue]
         features = np.hstack((mean_hsv, mean_rgb)).reshape(1, -1)
+        print(f"features: {features}")
         return features
 
         
@@ -175,24 +194,33 @@ class ModelTester:
         # Taking image of board
         print("TAKING IMAGE IN 2 SECONDS... GET READY!")
         time.sleep(2)
+        
+        # Grab frame
         try:
             frame = self.camera.capture_frame()
         except Exception as e:
             print(f"Error capturing frame: {e}")
             return
-        
-        frame = self.camera.capture_frame()
 
+        # Process and classify tokens in the frame
+        frame = self.camera.capture_frame()
         if frame is not None:
             isolated_token_coords = self.process_frame(frame)
             classified_frame = self.classify_and_label_tokens(frame,isolated_token_coords)
+            
             cv2.imshow("classified frame", classified_frame)
+        
         else:
             print("Failed to capture frame.")
 
 if __name__ == "__main__":
     while True:   
-        output_folder = "Image_Processing_Improvements/token-detection-training/labelled_data"  # Change this to your actual output folder path
-        test_kernel = ModelTester(output_folder)
+        test_kernel = ModelTester()
         print("TokenLabeller instance created.")
         test_kernel.run()
+        
+        # Check for quit command
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            print("Exiting program...")
+            cv2.destroyAllWindows()
+            break
