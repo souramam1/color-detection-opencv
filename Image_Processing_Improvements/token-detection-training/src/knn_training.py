@@ -89,21 +89,8 @@ class KNNTrainer:
         #Transform  X immediately after fitting
         self.X = self.scaler.transform(self.X)
         # Increase the importance of Hue by multiplying by 3
-        self.X[:, 0] *= 6  # Hue is in column index 0
+        self.X[:, 0] *= 3  # Hue is in column index 0
         print("Features normalized and Hue scaled by a factor of 3")
-        
-
-    def show_csv(self):
-        print("Data extracted from CSV:")
-        # try:
-        #     """Plot the hue against the saturation with each colored dot having the same color as its label using matplotlib."""
-        #     plt.scatter(self.X[:, 0], self.X[:, 1], c=self.y, cmap='hsv', alpha=0.5)
-        #     plt.xlabel('Hue')
-        #     plt.ylabel('Saturation')
-        #     plt.title('Hue vs Saturation')
-        #     plt.show()
-        # except:
-        #     print("Error: Could not plot the data")
         
 
     def shuffle_split_data(self):
@@ -183,7 +170,6 @@ class KNNTrainer:
         self.extract_features()
         self.set_scaler()
         self.plot_features()
-        self.show_csv()
         self.shuffle_split_data()
         best_k = self.cross_validate()
         self.train_knn(4)

@@ -108,11 +108,11 @@ class ModelTester:
         """Classify each isolated token using the KNN model and label it with its predicted color."""
         
         # Load the trained KNN model
-        model_path = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-15-53_knn_model.pkl"
+        model_path = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_knn_model.pkl"
         with open(model_path, "rb") as file:
             self.knn = load(file)
             
-        scaler_path = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-15-53_scaler.pkl"
+        scaler_path = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_scaler.pkl"
         with open(scaler_path, "rb") as file:
             self.scaler = load(file)
             
@@ -156,11 +156,11 @@ class ModelTester:
             
             features = self.identify_token_features(hsv_roi, isolated_token)
             normalised_features = self.scaler.transform(features)
-            normalised_features[:,0] *= 6 #Apply the same hue scaling
+            normalised_features[:,0] *= 3 #Apply the same hue scaling
             print(f"normalised_features = {normalised_features}")
 
             # Predict the color label using the KNN model
-            predicted_label = self.knn.predict(features)[0]
+            predicted_label = self.knn.predict(normalised_features)[0]
             print(f"predicted label is: {predicted_label}")
             
             # Store the classification results
@@ -246,3 +246,4 @@ if __name__ == "__main__":
             print("Exiting program...")
             cv2.destroyAllWindows()
             break # Exit the loop
+    cv2.destroyAllWindows()
