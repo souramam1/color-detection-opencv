@@ -19,6 +19,7 @@ class ModelTester:
     
     def __init__(self):
         self.knn = None
+        self.scaler = None
         self.camera = CameraLabelling()
         self.white_patch_capture = WhitePatchCapture()
 
@@ -107,9 +108,14 @@ class ModelTester:
         """Classify each isolated token using the KNN model and label it with its predicted color."""
         
         # Load the trained KNN model
-        model_path = r"Image_Processing_Improvements\token-detection-training\models\knn_model_Kd_tree_2025-03-11-10-56.pkl"
+        model_path = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-15-53_knn_model.pkl"
         with open(model_path, "rb") as file:
             self.knn = load(file)
+            
+        scaler_path = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-15-53_scaler.pkl"
+        with open(scaler_path, "rb") as file:
+            self.scaler = load(file)
+            
 
         # Calculate time taken for this for loop
         start_time = time.time()
@@ -149,6 +155,9 @@ class ModelTester:
             
             
             features = self.identify_token_features(hsv_roi, isolated_token)
+            normalised_features = self.scaler.transform(features)
+            normalised_features[:,0] *= 6 #Apply the same hue scaling
+            print(f"normalised_features = {normalised_features}")
 
             # Predict the color label using the KNN model
             predicted_label = self.knn.predict(features)[0]
@@ -188,8 +197,8 @@ class ModelTester:
         print(f"mean_rgb: {mean_rgb}")
 
         # Create token's feature array: [Hue, Saturation, Value, Red, Green, Blue]
-        #features = np.hstack((mean_hsv, mean_rgb)).reshape(1, -1)
-        features = np.hstack((mean_hsv)).reshape(1, -1)
+        features = np.hstack((mean_hsv, mean_rgb)).reshape(1, -1)
+        #features = np.hstack((mean_hsv)).reshape(1, -1)
         print(f"features: {features}")
         return features
 

@@ -27,6 +27,11 @@ class KNNTrainer:
         self.scaler = StandardScaler()
         
     def plot_features(self):
+        """Plot features after scaling transformation to verify correctness."""
+        if self.X is None:
+            print("Features not yet extracted. Run extract_features() first.")
+            return
+        
         label_mapping = {label: idx for idx, label in enumerate(self.df['Label'].unique())}
         self.df['Label_Encoded'] = self.df['Label'].map(label_mapping)
         
@@ -35,24 +40,31 @@ class KNNTrainer:
             'cyan': 'cyan',
             'green': 'green',
             'magenta': 'magenta',
-            'yellow': 'yellow'
+            'yellow': 'yellow',
+            'orange' : 'orange',
+            'blue' : 'blue'
             # Add more colors here if needed
         }
         
         colors = self.df['Label'].map(color_map).fillna('gray')
+        
+                # Use the scaled feature set
+        hue_scaled = self.X[:, 0]  # Scaled Hue (multiplied by 3)
+        saturation_scaled = self.X[:, 1]  # Scaled Saturation
+        value_scaled = self.X[:, 2]  # Scaled Value
                 
         fig = plt.figure(figsize=(10,7))
         ax = fig.add_subplot(111,projection='3d')
         
         # Scatter plot
-        sc = ax.scatter(self.df['Hue'], self.df['Saturation'], self.df['Value'], 
-                        c=colors, alpha=0.6)
+        # Scatter plot with transformed features
+        sc = ax.scatter(hue_scaled, saturation_scaled, value_scaled, c=colors, alpha=0.6)
 
         # Labels and Titles
-        ax.set_xlabel("Hue")
-        ax.set_ylabel("Saturation")
-        ax.set_zlabel("Value")
-        ax.set_title("3D Scatter Plot of Token Colors in HSV Space")
+        ax.set_xlabel("Scaled Hue")
+        ax.set_ylabel("Scaled Saturation")
+        ax.set_zlabel("Scaled Value")
+        ax.set_title("3D Scatter Plot of Scaled Token Colors in HSV Space")
 
         # Colorbar
         cbar = plt.colorbar(sc, ax=ax, shrink=0.5)
@@ -68,6 +80,18 @@ class KNNTrainer:
         self.X = self.df[['Hue', 'Saturation', 'Value', 'Red', 'Green', 'Blue']].values  # Features
         #self.X = self.df[['Hue', 'Saturation', 'Value']].values  # Features
         self.y = self.df['Label'].values  # Labels (color names)
+        
+
+    
+    def set_scaler(self):
+        # Fit the scaler once on the entire dataset
+        self.scaler.fit(self.X) # Ensure the same scaler is used across all stages
+        #Transform  X immediately after fitting
+        self.X = self.scaler.transform(self.X)
+        # Increase the importance of Hue by multiplying by 3
+        self.X[:, 0] *= 6  # Hue is in column index 0
+        print("Features normalized and Hue scaled by a factor of 3")
+        
 
     def show_csv(self):
         print("Data extracted from CSV:")
@@ -86,8 +110,7 @@ class KNNTrainer:
         """Shuffle and split the data into training and test sets."""
         self.X, self.y = shuffle(self.X, self.y, random_state=0)
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(self.X, self.y, test_size=0.1, random_state=42)
-        self.X_train = self.scaler.fit_transform(self.X_train)
-        self.X_test = self.scaler.transform(self.X_test)
+        
 
     def cross_validate(self):
         """Perform cross-validation to find the best k value."""
@@ -96,8 +119,9 @@ class KNNTrainer:
 
         for k in k_values:
             knn = KNeighborsClassifier(n_neighbors=k)
-            score = cross_val_score(knn, self.X, self.y, cv=5)
+            score = cross_val_score(knn, self.X, self.y, cv=10)
             scores.append(np.mean(score))
+            print(f"k={k}, all scores from its cross validation: {score}")
             print(f"k={k}, score={np.mean(score)}")
         
         best_index = np.argmax(scores)
@@ -139,28 +163,35 @@ class KNNTrainer:
         #Date
         current_date = datetime.now().strftime("%Y-%m-%d-%H-%M")
         #Define the full path for the file
-        file_path = os.path.join(save_folder, f"knn_model_Kd_tree_{current_date}.pkl")        
+        model_path = os.path.join(save_folder, f"{current_date}_knn_model.pkl")  
+        scaler_path = os.path.join(save_folder, f"{current_date}_scaler.pkl")        
          
         # Save model       
-        with open(file_path, "wb") as file:
+        with open(model_path, "wb") as file:
             dump(self.knn, file)
         print("Model saved to models folder")
+        
+        # Save scaler       
+        with open(scaler_path, "wb") as file:
+            dump(self.scaler, file)
+        print("Scaler saved to models folder")
         
         
     
     def run(self):
         """Run the full pipeline."""
-        self.plot_features()
         self.extract_features()
+        self.set_scaler()
+        self.plot_features()
         self.show_csv()
         self.shuffle_split_data()
         best_k = self.cross_validate()
-        self.train_knn(best_k)
+        self.train_knn(4)
         self.test_trained_knn()
         self.save_model()
 
 # Example usage
 if __name__ == "__main__":
-    csv_path = r'Image_Processing_Improvements\token-detection-training\labelled_data\CSV_files\Labels_HSV_RGB_20250311_105448.csv'  # Change this to your actual CSV file path
+    csv_path = r'Image_Processing_Improvements\token-detection-training\labelled_data\tokens\CSV_files\Labels_HSV_RGB_20250311_141146.csv'  # Change this to your actual CSV file path
     knn_trainer = KNNTrainer(csv_path)
     knn_trainer.run()

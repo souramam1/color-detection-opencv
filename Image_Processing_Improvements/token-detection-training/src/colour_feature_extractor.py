@@ -58,7 +58,7 @@ class ColorFeatureExtractor:
 
     def process_all_folders(self):
         """Process all color folders and extract features."""
-        color_folders = ["yellow_tokens", "green_tokens", "magenta_tokens", "cyan_tokens"]
+        color_folders = ["blue_tokens","cyan_tokens", "green_tokens", "magenta_tokens", "orange_tokens", "yellow_tokens"]
         for color_folder in color_folders:
             folder_path = os.path.join(self.base_folder_path, color_folder)
             if os.path.exists(folder_path):
