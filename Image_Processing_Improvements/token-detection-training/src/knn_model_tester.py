@@ -107,7 +107,7 @@ class ModelTester:
         """Classify each isolated token using the KNN model and label it with its predicted color."""
         
         # Load the trained KNN model
-        model_path = r"Image_Processing_Improvements\token-detection-training\models\knn_model_2025-03-10-16-09.pkl"
+        model_path = r"Image_Processing_Improvements\token-detection-training\models\knn_model_Kd_tree_2025-03-11-10-56.pkl"
         with open(model_path, "rb") as file:
             self.knn = load(file)
 
@@ -156,15 +156,15 @@ class ModelTester:
             
             # Store the classification results
             classifications.append((box, (x, y), predicted_label))
-
+            end_time = time.time()
+            classifying_t = end_time - start_time
+            print(f"classifying time is: {classifying_t}")
+        
         for box, (x,y), predicted_label in classifications:
             # Draw the label on the frame
             cv2.drawContours(camera_frame, [box], 0, (0, 255, 0), 2)  # Green rectangle around the token
             cv2.putText(camera_frame, predicted_label, (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
-        end_time = time.time()
-        classifying_t = end_time - start_time
-        print(f"classifying time is: {classifying_t}")
-        
+
         return camera_frame
 
     def identify_token_features(self, hsv_roi,token_roi):
@@ -174,15 +174,22 @@ class ModelTester:
         # cv2.imshow("bgr roi!", token_roi)        
         # cv2.waitKey(0)
         
+        #Extract central region (to avoid background influence - also to match feature extractor for classification)
+        h, w, _ = token_roi.shape  # Get dimensions of the token ROI
+
+        center_region = token_roi[h//4: 3*h//4, w//4: 3*w//4]
+        center_hsv = hsv_roi[h//4: 3*h//4, w//4: 3*w//4]
+        
         # Compute the mean HSV and RGB values within the token
-        mean_hsv = np.mean(hsv_roi.reshape(-1, 3), axis=0)
-        mean_rgb = np.mean(token_roi.reshape(-1, 3), axis=0)
+        mean_hsv = np.mean(center_hsv, axis=(0,1))
+        mean_rgb = np.mean(center_region, axis=(0,1))
         
         print(f"mean hsv: {mean_hsv}")
         print(f"mean_rgb: {mean_rgb}")
 
         # Create token's feature array: [Hue, Saturation, Value, Red, Green, Blue]
-        features = np.hstack((mean_hsv, mean_rgb)).reshape(1, -1)
+        #features = np.hstack((mean_hsv, mean_rgb)).reshape(1, -1)
+        features = np.hstack((mean_hsv)).reshape(1, -1)
         print(f"features: {features}")
         return features
 
@@ -209,18 +216,24 @@ class ModelTester:
             classified_frame = self.classify_and_label_tokens(frame,isolated_token_coords)
             
             cv2.imshow("classified frame", classified_frame)
+                    # Check for quit command
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                print("Exiting program...")
+                cv2.destroyAllWindows()
+                
         
         else:
             print("Failed to capture frame.")
 
 if __name__ == "__main__":
+    test_kernel = ModelTester()
+    print("Model tester instance created")
     while True:   
-        test_kernel = ModelTester()
-        print("TokenLabeller instance created.")
         test_kernel.run()
         
-        # Check for quit command
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        # Check for quit command ('q') after each run
+        key = cv2.waitKey(0) & 0xFF
+        if key == ord('q'):
             print("Exiting program...")
             cv2.destroyAllWindows()
-            break
+            break # Exit the loop

@@ -35,45 +35,44 @@ class TokenLabeller:
             next_index += 1
         return f"t_{self.color}_{next_index:02d}.jpg"
 
-    def process_frame(self, frame):
+    def process_frame(self, frame, image_patch):
         """Process the frame to isolate tokens. This is a placeholder for your actual processing code."""
         print("Processing frame...")
-            # Check the number of channels in the input frame
+        
+        # Check the number of channels in the input frame
         if len(frame.shape) == 2:
             print("Input frame is grayscale.")
         elif len(frame.shape) == 3:
             print(f"Input frame has {frame.shape[2]} channels.")
         
-        # Placeholder for your actual image processing code
-        
-        #White patch balancing using the white_patch_capture.py code
-        image_with_rectangles, image_patch = self.white_patch_capture.whitepatch_balancing(frame)
-        cv2.imshow('White Patch Calibration', image_with_rectangles)
-        #cv2.waitKey(0)
-        #Balanced frame
+        #White balancing frame
         balanced_frame = self.white_patch_capture.calculate_image_max(frame, image_patch)
         cv2.imshow("Balanced Frame", balanced_frame)
         cv2.waitKey(0)
+        
         #Gray frame
         gray = cv2.cvtColor(balanced_frame, cv2.COLOR_BGR2GRAY)
+        
         # Gaussian Blur
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        
         # Canny Edge Detection
         edges = cv2.Canny(blurred, 20, 100)
         cv2.imshow("Canny Edge Detection", edges)
         cv2.waitKey(0)
+        
         #Find all canny contours
         contours_canny, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         
-        # Draw all canny contours on frame for testing
+        # Testing - draw all Canny contours on frame
         frame_copy = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
         #cv2.drawContours(frame_copy, contours_canny, -1, (255, 0, 0), 1)
         
+        # Find outer rectangle that bounds the board
         roi = self.find_largest_roi(contours_canny)
         
+        #Returns list token coordinates identified inside the ROI
         isolated_token_coords = self.isolate_roi_contours(frame,contours_canny, roi)
-        
-        # Example isolated_token_coords = (50, 50, 100, 100), (200, 200, 150, 150)]
         
         return isolated_token_coords
 
@@ -148,40 +147,63 @@ class TokenLabeller:
             filepath = os.path.join(self.color_folder, filename)
             cv2.imwrite(filepath, isolated_token)
             print(f"Saved token image: {filepath}")
+            
+    def whitepatch_balancing(self,frame):
+        white_patch_balancer = WhitePatchCapture()
+        image_with_rectangles, image_patch = white_patch_balancer.whitepatch_balancing(frame)
+        cv2.imshow('White Patch Calibration', image_with_rectangles)
+        return image_patch
 
     def run(self):
         print(f"Starting token labelling for color: {self.color}")
         
-        print("Taking image in 6 seconds...")
-        time.sleep(4)
-        print("TAKING IMAGE IN 2 SECONDS... GET READY!")
-        time.sleep(2)
         
+        #Whitepatch frame for balancing
+        print("Capturing preliminary frame for white patch balancing in 2 SECONDS..")
+        time.sleep(2)
         try:
-            frame = self.camera.capture_frame()
+            prelim_frame = self.camera.capture_frame()
+            if prelim_frame is None:
+                print("Error: Preliminary frame capture failed.")
+                return
+            image_patch = self.whitepatch_balancing(prelim_frame)
+            print("White patch balancing applied")
         except Exception as e:
             print(f"Error capturing frame: {e}")
             return
         
-        frame = self.camera.capture_frame()
+        #Delay before capturing the main frame
+        print("10 seconds before capturing the main frame...")
+        time.sleep(8)
+        print("In 2 SECONDS!!")
+        time.sleep(2)
+        try:
+            frame = self.camera.capture_frame()
+            if frame is None:
+                print("Error: Failed to capture main frame.")
+                return
+        except Exception as e:
+            print(f"Error capturing frame: {e}")
+            return
         
         #save the frame to the output folder
         cv2.imwrite(os.path.join(self.output_folder, f"frame_{time.time()}.jpg"), frame)
         if frame is not None:
-            rectangles = self.process_frame(frame)
+            rectangles = self.process_frame(frame, image_patch)
             self.save_token_images(frame, rectangles)
         else:
             print("Failed to capture frame.")
 
 if __name__ == "__main__":
     while True:
-        color = "green"
-        valid_colors = ["yellow", "cyan", "green", "magenta"]
+        color = "orange"
+        valid_colors = ["yellow", "cyan", "green", "magenta", "orange", "blue"]
         
         if color not in valid_colors:
             print(f"Invalid color: {color}. Please enter one of the following: {', '.join(valid_colors)}")
         else:
             print(f"Color accepted: {color}")
+            
             output_folder = "Image_Processing_Improvements/token-detection-training/labelled_data"  # Change this to your actual output folder path
             labeller = TokenLabeller(color, output_folder)
             print("TokenLabeller instance created.")

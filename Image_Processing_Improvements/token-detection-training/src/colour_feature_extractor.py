@@ -37,7 +37,7 @@ class ColorFeatureExtractor:
     def get_label_from_filename(self, filename):
         """Extract the color label from the filename."""
         print(f"filename: {filename}")
-        match = re.search(r"(yellow|magenta|cyan|green)", filename, re.IGNORECASE)
+        match = re.search(r"(yellow|magenta|cyan|green|orange|blue)", filename, re.IGNORECASE)
         return match.group(1).lower() if match else "unknown"
 
     def process_images_in_folder(self, folder_path):
@@ -74,6 +74,7 @@ class ColorFeatureExtractor:
         csv_filename = f"Labels_HSV_RGB_{timestamp}.csv"
         csv_path = os.path.join(csv_folder, csv_filename)
         df = pd.DataFrame(self.data, columns=["Hue", "Saturation", "Value", "Red", "Green", "Blue", "Label"])
+        #df = pd.DataFrame(self.data, columns=["Hue", "Saturation", "Value", "Label"])
         df.to_csv(csv_path, index=False)
         print(f"CSV file saved to {csv_path}")
 
@@ -84,6 +85,6 @@ class ColorFeatureExtractor:
 
 # Example usage
 if __name__ == "__main__":
-    base_folder = "Image_Processing_Improvements/token-detection-training/labelled_data"  # Change this to your actual base folder path
+    base_folder = "Image_Processing_Improvements/token-detection-training/labelled_data/tokens"  # Change this to your actual base folder path
     extractor = ColorFeatureExtractor(base_folder)
     extractor.run()

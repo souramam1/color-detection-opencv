@@ -6,6 +6,7 @@ from sklearn.utils import shuffle
 from sklearn.neighbors import KNeighborsClassifier
 import cv2
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 from sklearn.preprocessing import StandardScaler
 import os
 from pickle import dump, load
@@ -24,10 +25,48 @@ class KNNTrainer:
         self.y_test = None
         self.knn = None
         self.scaler = StandardScaler()
+        
+    def plot_features(self):
+        label_mapping = {label: idx for idx, label in enumerate(self.df['Label'].unique())}
+        self.df['Label_Encoded'] = self.df['Label'].map(label_mapping)
+        
+        # Define custom color mapping
+        color_map = {
+            'cyan': 'cyan',
+            'green': 'green',
+            'magenta': 'magenta',
+            'yellow': 'yellow'
+            # Add more colors here if needed
+        }
+        
+        colors = self.df['Label'].map(color_map).fillna('gray')
+                
+        fig = plt.figure(figsize=(10,7))
+        ax = fig.add_subplot(111,projection='3d')
+        
+        # Scatter plot
+        sc = ax.scatter(self.df['Hue'], self.df['Saturation'], self.df['Value'], 
+                        c=colors, alpha=0.6)
+
+        # Labels and Titles
+        ax.set_xlabel("Hue")
+        ax.set_ylabel("Saturation")
+        ax.set_zlabel("Value")
+        ax.set_title("3D Scatter Plot of Token Colors in HSV Space")
+
+        # Colorbar
+        cbar = plt.colorbar(sc, ax=ax, shrink=0.5)
+        cbar.set_label('Encoded Labels')
+
+        # Show plot
+        plt.show()
+        
+        
 
     def extract_features(self):
         """Extract features and labels from the CSV data."""
         self.X = self.df[['Hue', 'Saturation', 'Value', 'Red', 'Green', 'Blue']].values  # Features
+        #self.X = self.df[['Hue', 'Saturation', 'Value']].values  # Features
         self.y = self.df['Label'].values  # Labels (color names)
 
     def show_csv(self):
@@ -75,7 +114,7 @@ class KNNTrainer:
 
     def train_knn(self, k):
         """Train the KNN classifier with the best k value."""
-        self.knn = KNeighborsClassifier(n_neighbors=k)
+        self.knn = KNeighborsClassifier(n_neighbors=k, algorithm='kd_tree')
         self.knn.fit(self.X_train, self.y_train)
 
     def test_trained_knn(self):
@@ -100,7 +139,7 @@ class KNNTrainer:
         #Date
         current_date = datetime.now().strftime("%Y-%m-%d-%H-%M")
         #Define the full path for the file
-        file_path = os.path.join(save_folder, f"knn_model_{current_date}.pkl")        
+        file_path = os.path.join(save_folder, f"knn_model_Kd_tree_{current_date}.pkl")        
          
         # Save model       
         with open(file_path, "wb") as file:
@@ -111,16 +150,17 @@ class KNNTrainer:
     
     def run(self):
         """Run the full pipeline."""
+        self.plot_features()
         self.extract_features()
         self.show_csv()
         self.shuffle_split_data()
         best_k = self.cross_validate()
-        self.train_knn(5)
+        self.train_knn(best_k)
         self.test_trained_knn()
         self.save_model()
 
 # Example usage
 if __name__ == "__main__":
-    csv_path = r'Image_Processing_Improvements\token-detection-training\labelled_data\CSV_files\Labels_HSV_RGB_20250306_183533.csv'  # Change this to your actual CSV file path
+    csv_path = r'Image_Processing_Improvements\token-detection-training\labelled_data\CSV_files\Labels_HSV_RGB_20250311_105448.csv'  # Change this to your actual CSV file path
     knn_trainer = KNNTrainer(csv_path)
     knn_trainer.run()
