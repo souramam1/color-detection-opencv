@@ -5,7 +5,11 @@ class Camera:
         self.webcam = cv2.VideoCapture(webcam_index)
 
     def capture_frame(self):
-        """Capture a frame from the webcam."""
+        """Capture a frame from the webcam.
+        
+            Returns:
+                frame: NumPy array
+        """
         ret, frame = self.webcam.read()
         if not ret:
             print("Failed to grab frame")
