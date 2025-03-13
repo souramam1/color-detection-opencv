@@ -1,4 +1,4 @@
-from HSV_Calib_01 import HSVCalibrator
+from hsv_calib import HSVCalibrator
 from Picam_07 import ColourDetectionWithROI
 
 # This will run a calibration FIRST and then directly input those values into the colour detection file.

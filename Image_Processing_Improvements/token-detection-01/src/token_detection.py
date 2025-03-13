@@ -1,7 +1,7 @@
-from color_detection import ColorDetection
+from hsv_color_detection import ColorDetection
 from contour_processing import ContourProcessing
 from camera import Camera
-from HSV_Calib_01 import HSVCalibrator
+from hsv_calib import HSVCalibrator
 from white_patch_capture import WhitePatchCapture
 from knn_model_interfacer import KnnInterfacer
 
@@ -16,6 +16,7 @@ class TokenDetectionSystem:
         self.contour_processing = ContourProcessing()
         self.color_classification = KnnInterfacer()
         self.white_patch_capture = WhitePatchCapture()
+        
         
 
     def run(self,model_path, scaler_path):
@@ -43,9 +44,11 @@ class TokenDetectionSystem:
                     #isolate token coordinates
                     isolated_token_coords = self.contour_processing.process_frame(frame, image_patch)
                     #classify tokens into colour groups 
-                    labelled_frame = self.color_classification.classify_and_label_tokens(frame,isolated_token_coords,model_path,scaler_path)
+                    labelled_frame, classifications = self.color_classification.classify_and_label_tokens(frame,isolated_token_coords,model_path,scaler_path)
                     #display classified tokens
-                    self.contour_processing.show_result(labelled_frame, "Final frame with classification")
+                    #self.contour_processing.show_result(labelled_frame, "Final frame with classification")
+                    
+                    yield labelled_frame, classifications # Yield frame & token detections
                     
                 if cv2.waitKey(10) & 0xFF == ord('q'):
                     break

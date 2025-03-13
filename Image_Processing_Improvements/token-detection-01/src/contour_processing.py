@@ -72,6 +72,11 @@ class ContourProcessing:
             width, height = rect[1][0], rect[1][1]
             area = width * height
             
+            # Skip if one side is more than 3 times the other - avoids slivers of colour from shadows
+            if max(width, height) > 3 * min(width, height):
+                print(f"Skipping rectangle at ({x}, {y}) due to extreme aspect ratio.")
+                continue
+                
             if 300 < area <= 800:
                 if roi_x <= x <= roi_x + roi_w and roi_y <= y <= roi_y + roi_h:
                     isolated_token_rectangles.append(rect)

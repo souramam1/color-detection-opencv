@@ -23,6 +23,7 @@ class KnnInterfacer:
                    
             Returns:
                 frame: frame displaying tokens with associated labels, a NumPy array
+                classifications: list of classified tokens with each token : box, (centre_x,centre_y), predicted_label (str)
         """
         
         # Load the trained KNN model
@@ -104,7 +105,7 @@ class KnnInterfacer:
             cv2.drawContours(frame, [box], 0, (0, 255, 0), 2)  # Green rectangle around the token
             cv2.putText(frame, predicted_label, (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
 
-        return frame
+        return frame, classifications
 
     def identify_token_features(self, hsv_roi,token_roi):
         ''' Extract and return token hsv, and rgb features 
