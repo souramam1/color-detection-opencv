@@ -4,6 +4,7 @@ from camera import Camera
 from HSV_Calib_01 import HSVCalibrator
 from white_patch_capture import WhitePatchCapture
 
+
 import numpy as np
 import cv2
 
@@ -12,6 +13,7 @@ class TokenDetectionSystem:
         self.camera = Camera()
         self.contour_processing = ContourProcessing()
         self.color_detection = ColorDetection()
+        self.color_classification = ColorClassification()
         self.white_patch_capture = WhitePatchCapture()
         
         if calib_index == 1:
@@ -37,7 +39,7 @@ class TokenDetectionSystem:
             while True:
                 frame = self.camera.capture_frame()
                 if frame is not None:
-                    contoured_frame, bgr_frame, roi = self.contour_processing.process_frame(frame)
+                    contoured_frame, bgr_frame, roi = self.contour_processing.process_frame_old(frame)
                     self.color_detection.draw_contours(contoured_frame, self.contour_processing.detected_token_contours, bgr_frame, image_patch)
                     self.contour_processing.show_result(contoured_frame)
 

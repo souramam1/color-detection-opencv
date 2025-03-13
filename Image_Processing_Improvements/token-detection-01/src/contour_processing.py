@@ -87,7 +87,7 @@ class ContourProcessing:
     def show_result(self, frame):
         cv2.imshow("Contour detection with Canny", frame)
 
-    def process_frame(self, frame):
+    def process_frame_old(self, frame):
     
         if frame is None:
             return None, None, None
@@ -98,6 +98,23 @@ class ContourProcessing:
         
         cv2.imshow("Bounded contours detected", hsv_frame_with_canny_contours)
         return hsv_frame_with_canny_contours, bgr_frame, roi
+    
+    def process_frame(self, frame: np.ndarray) -> list:
+        '''Processes camera frame and returns list of isolated rectangular token box coordinates
+        
+        Parameters:
+            frame (np.ndarray): The input frame, a NumPy array
+            
+        Returns:
+            isolated_token_coords: the list of corner points corresponding to tokens identified as being within the region of interest
+        
+        '''
+        gray_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        
+        
+        
+        
+        
 
     def run(self):
         try:
