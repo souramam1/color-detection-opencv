@@ -31,7 +31,7 @@ class TokenDetectionSystem:
         frame = self.camera.capture_frame()
     
         # displays location of rectangle segment grabbed from image for "image_patch" 
-        image_with_rectangles, image_patch = self.white_patch_capture.whitepatch_balancing(frame)
+        image_with_rectangles, image_patch = self.white_patch_capture.select_image_patch(frame)
         cv2.imshow('White Patch Calibration', image_with_rectangles)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
@@ -53,7 +53,7 @@ class TokenDetectionSystem:
             self.camera.cleanup()
 
 if __name__ == "__main__":
-    #
+    
     detection_system = TokenDetectionSystem()
     
     model = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_knn_model.pkl"

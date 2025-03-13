@@ -163,22 +163,3 @@ class ContourProcessing:
         image_max = (image_max * 255).astype(np.uint8)   
         
         return image_max
-        
-        
-
-    def run(self):
-        try:
-            while True:
-                frame = self.process_frame()
-                if frame is not None:
-                    self.show_result(frame)
-                if cv2.waitKey(10) & 0xFF == ord('q'):
-                    break
-        finally:
-            print("Cleaning up")
-
-
-        
-if __name__ == "__main__":
-    contour_detection = ContourProcessing()
-    contour_detection.run()

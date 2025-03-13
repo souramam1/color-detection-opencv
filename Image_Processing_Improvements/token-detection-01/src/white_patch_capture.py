@@ -5,7 +5,7 @@ class WhitePatchCapture:
     def __init__(self):
         self.image_patch = None
 
-    def whitepatch_balancing(self, frame):
+    def select_image_patch(self, frame):
         patch_size = 60
         center_y, center_x = frame.shape[0] // 2, frame.shape[1] // 2
         
@@ -30,7 +30,3 @@ class WhitePatchCapture:
         
         return image_with_rectangles, image_patch
 
-    def calculate_image_max(self, frame, image_patch):
-        image_max = (frame * 1.0 / image_patch.max(axis=(0, 1))).clip(0, 1)
-        image_max = (image_max * 255).astype(np.uint8)
-        return image_max
