@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from scipy.spatial import KDTree
 
 
 class ContourProcessing:
@@ -22,7 +23,7 @@ class ContourProcessing:
     def find_largest_roi(self, contours):
         ''' Finds outer most rectangle, defined as being the edges of the "battery"
 
-            Parmeters:
+            Parameters:
                 Input: All canny detected contours as list of NumPy array
             
             Returns:
@@ -76,14 +77,45 @@ class ContourProcessing:
             if max(width, height) > 3 * min(width, height):
                 print(f"Skipping rectangle at ({x}, {y}) due to extreme aspect ratio.")
                 continue
-                
-            if 300 < area <= 800:
+             
+            if 300 < area <= 900:
                 if roi_x <= x <= roi_x + roi_w and roi_y <= y <= roi_y + roi_h:
-                    isolated_token_rectangles.append(rect)
+                    print(f"Token detected at ({x}, {y}) with area {area}")
+                    if self.non_identical_check(rect, isolated_token_rectangles):
+                        isolated_token_rectangles.append(rect)
+                    else:
+                        print(f"Skipping rectangle at ({x}, {y}) due to proximity to existing token.")
                                 
         return isolated_token_rectangles
+    
+    def non_identical_check(self, rect: list, isolated_token_rectangles: list) -> bool:  
+        ''' Checks if rect is at least 5 units away from all stored rectangles using KDTree.
+        
+        Parameters:
+            rect: list: The rectangle to check
+            isolated_token_rectangles: list: The list of rectangles to check against
+                
+        Returns:
+            bool: True if rect is at least 5 units away from all stored rectangles, False otherwise
+        '''
+        if not isolated_token_rectangles:  # No previous rectangles, add directly
+            return True
+        
+        # Extract existing (x, y) points from isolated_token_rectangles
+        points = [(r[0][0], r[0][1]) for r in isolated_token_rectangles]
+        
+        # Create KDTree
+        tree = KDTree(points)
+        
+        # Query the nearest neighbor within radius 5
+        x, y = rect[0][0], rect[0][1]
+        neighbors = tree.query_ball_point((x, y), r=5)
+        
+        # If no points found within 5 units, it is isolated
+        return len(neighbors) == 0
+        
 
-    def show_result(self, frame, caption):
+    def show_result(self, frame: np.ndarray , caption: str):
         ''' Displays frame feed along with caption input
         
         Parameters:
@@ -149,6 +181,7 @@ class ContourProcessing:
         roi = self.find_largest_roi(contours)
         # identifies tokens within that roi and returns the list of their box coordinates
         token_rect_coords = self.isolate_roi_contours(contours, roi)
+        print(f"Token coordinates: {token_rect_coords}")
         
         return token_rect_coords
              

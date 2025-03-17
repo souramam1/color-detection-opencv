@@ -4,22 +4,36 @@ from camera import Camera
 from hsv_calib import HSVCalibrator
 from white_patch_capture import WhitePatchCapture
 from knn_model_interfacer import KnnInterfacer
-
-
+import queue
 import numpy as np
 import cv2
 
 class TokenDetectionSystem:
-    def __init__(self, camera_index=1):
+    def __init__(self, 
+                 shared_queue,
+                 model=r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_knn_model.pkl", 
+                 scaler = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_scaler.pkl", 
+                 camera_index=1):
+        
+        '''Initialise the Token Detection System
+
+            Parameters:
+                camera_index (int): Index of the camera to be used for token detection
+                model (str): Path to the classification model used to identify colours
+                scaler (str): Path to the scaler used to preprocess data before classification
+        '''
         
         self.camera = Camera()
         self.contour_processing = ContourProcessing()
         self.color_classification = KnnInterfacer()
         self.white_patch_capture = WhitePatchCapture()
+        self.model_path = model
+        self.scaler_path = scaler
+        self.shared_queue = shared_queue
         
         
 
-    def run(self,model_path, scaler_path):
+    def run(self):
         ''' Run the token detection system: Each run requires having no tokens on the board initially and calibrating to a white background
         
             Parameters:
@@ -44,11 +58,13 @@ class TokenDetectionSystem:
                     #isolate token coordinates
                     isolated_token_coords = self.contour_processing.process_frame(frame, image_patch)
                     #classify tokens into colour groups 
-                    labelled_frame, classifications = self.color_classification.classify_and_label_tokens(frame,isolated_token_coords,model_path,scaler_path)
+                    labelled_frame, classifications = self.color_classification.classify_and_label_tokens(frame,isolated_token_coords,self.model_path,self.scaler_path)
                     #display classified tokens
-                    #self.contour_processing.show_result(labelled_frame, "Final frame with classification")
+                    self.contour_processing.show_result(labelled_frame, "Final frame with classification")
                     
-                    yield labelled_frame, classifications # Yield frame & token detections
+                    #yield labelled_frame, classifications # Yield frame & token detections
+                    print(f"length of classifications to be sent are: {len(classifications)}")
+                    self.shared_queue.put(classifications)
                     
                 if cv2.waitKey(10) & 0xFF == ord('q'):
                     break
@@ -56,10 +72,12 @@ class TokenDetectionSystem:
             self.camera.cleanup()
 
 if __name__ == "__main__":
-    
-    detection_system = TokenDetectionSystem()
-    
+    script_queue = queue.Queue()
     model = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_knn_model.pkl"
-    scaler = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_scaler.pkl"
+    scaler =  r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_scaler.pkl"
+    detection_system = TokenDetectionSystem(script_queue)
     
-    detection_system.run(model,scaler)
+    # model = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_knn_model.pkl"
+    # scaler = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_scaler.pkl"
+    
+    detection_system.run()

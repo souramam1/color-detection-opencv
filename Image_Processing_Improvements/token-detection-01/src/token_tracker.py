@@ -1,19 +1,18 @@
 from collections import deque, defaultdict
 import numpy as np
 from scipy.spatial import distance
+import queue
 import cv2
 from token_detection import TokenDetectionSystem
 
 class TokenTracking:
-    def __init__(self, model_path, scaler_path, max_disappeared=5, history_size=5):
-        self.token_detector = TokenDetectionSystem()
-        self.model_path = model_path
-        self.scaler_path = scaler_path
+    def __init__(self, shared_queue, max_disappeared=5, history_size=5):
         self.next_object_id = 0
         self.objects = {}
         self.disappeared = {}
         self.token_history = defaultdict(lambda: deque(maxlen=history_size))
         self.max_disappeared = max_disappeared
+        self.shared_queue = shared_queue
 
     def register(self, centroid, color):
         self.objects[self.next_object_id] = (centroid, color)
@@ -87,23 +86,11 @@ class TokenTracking:
 
     def run(self):
         """ Runs the tracking system by calling TokenDetectionSystem.run(). """
-        for labelled_frame, classifications in self.token_detector.run(self.model_path, self.scaler_path):
-            tracked_objects = self.update(classifications)
-            smoothed_counts = self.get_smoothed_counts()
-            print(f"Smoothed Token Counts: {smoothed_counts}")
-            
-            # Display smoothed counts in the top-left corner of the frame
-            y_offset = 20  # Starting Y position for the text
-            for color, count in smoothed_counts.items():
-                cv2.putText(labelled_frame, f"{color}: {count}", (10, y_offset), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-                y_offset += 20  # Move down for the next color count
+        while True:
+            classifications = self.shared_queue.get(block=True)
+            print(f"tracking received: {classifications} of length {len(classifications)}")
 
-            for object_id, ((x, y), color) in tracked_objects.items():
-                cv2.putText(labelled_frame, f"{color} {object_id}", (x, y - 5), 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 
-            self.token_detector.contour_processing.show_result(labelled_frame, "Final frame with classification")
 
 if __name__ == "__main__":
     model = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_knn_model.pkl"

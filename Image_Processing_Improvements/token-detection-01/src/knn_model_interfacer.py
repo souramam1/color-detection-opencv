@@ -39,7 +39,7 @@ class KnnInterfacer:
 
         # Calculate time taken for this for loop
         start_time = time.time()
-        
+        print(f"length of rectangles is : {len(rectangles)}")
         classifications = [] #store classification results
         
         # Iterate through each detected token
@@ -90,7 +90,7 @@ class KnnInterfacer:
 
             # Predict the color label using the KNN model
             predicted_label = self.knn.predict(normalised_features)[0]
-            print(f"predicted label is: {predicted_label}")
+            #print(f"predicted label is: {predicted_label}")
             
             # Store the classification results
             classifications.append((box, (x, y), predicted_label))
