@@ -76,8 +76,4 @@ if __name__ == "__main__":
     model = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_knn_model.pkl"
     scaler =  r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_scaler.pkl"
     detection_system = TokenDetectionSystem(script_queue)
-    
-    # model = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_knn_model.pkl"
-    # scaler = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_scaler.pkl"
-    
     detection_system.run()
