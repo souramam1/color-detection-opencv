@@ -6,13 +6,13 @@ import cv2
 from token_detection import TokenDetectionSystem
 
 class TokenTracking:
-    def __init__(self, shared_queue, max_disappeared=5, history_size=5):
+    def __init__(self, shared_queue, history_size=5):
         self.next_object_id = 0
         self.objects = {}
         self.disappeared = {}
         self.token_history = defaultdict(lambda: deque(maxlen=history_size))
-        self.max_disappeared = max_disappeared
         self.shared_queue = shared_queue
+        self.max_dissapeared = history_size
 
     def register(self, centroid, color):
         self.objects[self.next_object_id] = (centroid, color)
@@ -34,6 +34,7 @@ class TokenTracking:
 
         new_centroids = np.array([x[1] for x in classifications])
         new_colors = [x[2] for x in classifications]
+        print(f"new_centroids: {new_centroids} new_colors: {new_colors}")
 
         if len(self.objects) == 0:
             for i in range(len(new_centroids)):
@@ -47,8 +48,11 @@ class TokenTracking:
             cols = D.argmin(axis=1)
 
             used_rows, used_cols = set(), set()
+            max_distance = 10
             for row, col in zip(rows, cols):
                 if row in used_rows or col in used_cols:
+                    continue
+                if D[row,col] > max_distance:
                     continue
                 object_id = object_ids[row]
                 self.objects[object_id] = (new_centroids[col], new_colors[col])
@@ -85,16 +89,23 @@ class TokenTracking:
         return {color: int(np.mean(list(counts))) for color, counts in self.token_history.items()}
 
     def run(self):
-        """ Runs the tracking system by calling TokenDetectionSystem.run(). """
+        """ Runs tracking system in an infinite loop"""
         while True:
             classifications = self.shared_queue.get(block=True)
             print(f"tracking received: {classifications} of length {len(classifications)}")
-
-
+            self.update(classifications)
+            smoothed_counts = self.get_smoothed_counts()
+            print(f"Smoothed Token Counts: {smoothed_counts}")
 
 if __name__ == "__main__":
-    model = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_knn_model.pkl"
-    scaler = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_scaler.pkl"
-    
-    tracker = TokenTracking(model, scaler)
+    import sys
+
+    if len(sys.argv) != 2:
+        print("Usage: python token_tracker.py <history_size>")
+        sys.exit(1)
+
+    history_size = int(sys.argv[1])
+    shared_queue = queue.Queue()
+
+    tracker = TokenTracking(shared_queue, history_size)
     tracker.run()

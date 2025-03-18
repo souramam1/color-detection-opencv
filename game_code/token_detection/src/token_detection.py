@@ -11,13 +11,13 @@ import cv2
 class TokenDetectionSystem:
     def __init__(self, 
                  shared_queue,
-                 model=r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_knn_model.pkl", 
-                 scaler = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_scaler.pkl", 
+                 model=r"game_code\token_model_training\models\2025-03-11-16-18_knn_model.pkl", 
+                 scaler = r"game_code\token_model_training\models\2025-03-11-16-18_scaler.pkl", 
                  camera_index=1):
         
         '''Initialise the Token Detection System
 
-            Parameters:
+            Parameters:0
                 camera_index (int): Index of the camera to be used for token detection
                 model (str): Path to the classification model used to identify colours
                 scaler (str): Path to the scaler used to preprocess data before classification
@@ -73,7 +73,7 @@ class TokenDetectionSystem:
 
 if __name__ == "__main__":
     script_queue = queue.Queue()
-    model = r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_knn_model.pkl"
-    scaler =  r"Image_Processing_Improvements\token-detection-training\models\2025-03-11-16-18_scaler.pkl"
+    model = r"game_code\token_model_training\models\2025-03-11-16-18_knn_model.pkl"
+    scaler =  r"game_code\token_model_training\models\2025-03-11-16-18_scaler.pkl"
     detection_system = TokenDetectionSystem(script_queue)
     detection_system.run()
