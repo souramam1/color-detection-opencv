@@ -39,7 +39,7 @@ class KnnInterfacer:
 
         # Calculate time taken for this for loop
         start_time = time.time()
-        print(f"length of rectangles is : {len(rectangles)}")
+        #print(f"length of rectangles is : {len(rectangles)}")
         classifications = [] #store classification results
         
         # Iterate through each detected token
@@ -98,12 +98,19 @@ class KnnInterfacer:
             # For timing purposes
             end_time = time.time()
             classifying_t = end_time - start_time
-            print(f"classifying time is: {classifying_t}")
-        
+            #print(f"classifying time is: {classifying_t}")
+        color_map = {
+            "yellow": (0, 255, 255),
+            "orange": (0, 165, 255),
+            "blue": (255, 0, 0),
+            "magenta": (255, 0, 255),
+            "cyan": (255, 255, 0),
+            "green": (0, 255, 0)
+        }
         for box, (x,y), predicted_label in classifications:
             # Draw the label on the frame
-            cv2.drawContours(frame, [box], 0, (0, 255, 0), 2)  # Green rectangle around the token
-            cv2.putText(frame, predicted_label, (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
+            cv2.drawContours(frame, [box], 0, color_map[predicted_label], 2)  # Green rectangle around the token
+            cv2.putText(frame, predicted_label, (x, y-5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color_map[predicted_label], 1)
 
         return frame, classifications
 
@@ -128,12 +135,12 @@ class KnnInterfacer:
         mean_hsv = np.mean(center_hsv, axis=(0,1))
         mean_rgb = np.mean(center_region, axis=(0,1))
         
-        print(f"mean hsv: {mean_hsv}")
-        print(f"mean_rgb: {mean_rgb}")
+        #print(f"mean hsv: {mean_hsv}")
+        #print(f"mean_rgb: {mean_rgb}")
 
         # Create token's feature array: [Hue, Saturation, Value, Red, Green, Blue]
         features = np.hstack((mean_hsv, mean_rgb)).reshape(1, -1)
-        print(f"features: {features}")
+        #print(f"features: {features}")
         
         return features
 

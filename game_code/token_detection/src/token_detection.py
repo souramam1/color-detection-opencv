@@ -10,7 +10,7 @@ import cv2
 
 class TokenDetectionSystem:
     def __init__(self, 
-                 shared_queue,
+                 shared_queue_d_to_t,
                  model=r"game_code\token_model_training\models\2025-03-20-11-23_knn_model.pkl", 
                  scaler = r"game_code\token_model_training\models\2025-03-20-11-23_scaler.pkl", 
                  camera_index=1):
@@ -29,7 +29,8 @@ class TokenDetectionSystem:
         self.white_patch_capture = WhitePatchCapture()
         self.model_path = model
         self.scaler_path = scaler
-        self.shared_queue = shared_queue
+        self.shared_queue_d_to_t = shared_queue_d_to_t
+        
         
         
 
@@ -61,16 +62,17 @@ class TokenDetectionSystem:
                     labelled_frame, classifications = self.color_classification.classify_and_label_tokens(frame,isolated_token_coords,self.model_path,self.scaler_path)
                     #display classified tokens
                     self.contour_processing.show_result(labelled_frame, "Final frame with classification")
-                    
-                    #yield labelled_frame, classifications # Yield frame & token detections
                     print(f"length of classifications to be sent are: {len(classifications)}")
-                    self.shared_queue.put(classifications)
+                    # send the data to the queue to be accessed by token tracker
+                    self.shared_queue_d_to_t.put(classifications)
+                    
+
                     
                 if cv2.waitKey(10) & 0xFF == ord('q'):
                     break
         finally:
             self.camera.cleanup()
-
+0
 if __name__ == "__main__":
     script_queue = queue.Queue()
     model = r"game_code\token_model_training\models\2025-03-20-11-23_knn_model.pkl"

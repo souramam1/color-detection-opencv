@@ -38,7 +38,7 @@ class ContourProcessing:
                 largest_area = area
                 x, y, w, h = cv2.boundingRect(contour)
                 roi = (x, y, w, h)
-                print(f"ROI: {roi}")
+                #print(f"ROI: {roi}")
         return roi
     
     def isolate_roi_contours(self, contours: list[np.ndarray], roi: list[int,int,int,int]):
@@ -75,16 +75,17 @@ class ContourProcessing:
             
             # Skip if one side is more than 3 times the other - avoids slivers of colour from shadows
             if max(width, height) > 3 * min(width, height):
-                print(f"Skipping rectangle at ({x}, {y}) due to extreme aspect ratio.")
+                #print(f"Skipping rectangle at ({x}, {y}) due to extreme aspect ratio.")
                 continue
              
             if 300 < area <= 900:
                 if roi_x <= x <= roi_x + roi_w and roi_y <= y <= roi_y + roi_h:
-                    print(f"Token detected at ({x}, {y}) with area {area}")
+                    #print(f"Token detected at ({x}, {y}) with area {area}")
                     if self.non_identical_check(rect, isolated_token_rectangles):
                         isolated_token_rectangles.append(rect)
                     else:
-                        print(f"Skipping rectangle at ({x}, {y}) due to proximity to existing token.")
+                        #print(f"Skipping rectangle at ({x}, {y}) due to proximity to existing token.")
+                        continue
                                 
         return isolated_token_rectangles
     
@@ -124,6 +125,7 @@ class ContourProcessing:
             
         '''
         cv2.imshow(f"{caption}", frame)
+        
 
 
     def process_frame(self, frame: np.ndarray, image_patch: np.ndarray) -> list:
@@ -181,10 +183,32 @@ class ContourProcessing:
         roi = self.find_largest_roi(contours)
         # identifies tokens within that roi and returns the list of their box coordinates
         token_rect_coords = self.isolate_roi_contours(contours, roi)
-        print(f"Token coordinates: {token_rect_coords}")
+        #print(f"Token coordinates: {token_rect_coords}")
         
         return token_rect_coords
              
+    def display_smoothed_count(self, frame, smoothed_count: dict) -> np.ndarray:
+        ''' Displays the smoothed token counts on a frame - currently unused in code but can be incorporated if count is passed in
+        
+        Parameters:
+            smoothed_count: dict: The smoothed counts of tokens for each color
+        
+        Returns:
+            frame: np.ndarray: The frame with the smoothed counts displayed on it
+        '''
+        y_offset = 30
+        color_map = {
+            "yellow": (0, 255, 255),
+            "magenta": (255, 0, 255),
+            "cyan": (255, 255, 0),
+            "green": (0, 255, 0)
+        }
+        for color in ["yellow", "magenta", "cyan", "green"]:
+            count = smoothed_count.get(color, 0)
+            cv2.putText(frame, f"{color}: {count}", (10, y_offset), cv2.FONT_HERSHEY_SIMPLEX, 1, color_map[color], 2)
+            y_offset += 30
+        return frame
+    
     def white_balance(self,frame, image_patch):
         ''' Applies whitepatch balancing to input frame based on image patch from calibration phase
         

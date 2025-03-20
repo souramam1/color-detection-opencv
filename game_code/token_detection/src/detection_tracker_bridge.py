@@ -5,11 +5,12 @@ from token_tracker import TokenTracking
 from token_detection import TokenDetectionSystem
 
 # Shared queue between detection and tracking
-shared_queue = queue.Queue()
+shared_queue_d_to_t = queue.Queue()
+
 
 # Instantiate the token detection system and trackerq
-detector = TokenDetectionSystem(shared_queue=shared_queue)  
-tracker = TokenTracking(shared_queue=shared_queue)
+detector = TokenDetectionSystem(shared_queue_d_to_t=shared_queue_d_to_t)  
+tracker = TokenTracking(shared_queue_d_to_t=shared_queue_d_to_t)
 
 # Run both in separate threads
 detection_thread = threading.Thread(target=detector.run, daemon=True)
