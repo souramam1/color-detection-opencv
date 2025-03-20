@@ -144,7 +144,7 @@ class KNNTrainer:
         """Save the trained KNN model to a file."""
         
         #Define the models folder within token-detection-training
-        save_folder = r"Image_Processing_Improvements\token-detection-training\models"
+        save_folder = r"game_code\token_model_training\models"
         os.makedirs(save_folder, exist_ok=True)
         
         #Date
@@ -178,6 +178,6 @@ class KNNTrainer:
 
 # Example usage
 if __name__ == "__main__":
-    csv_path = r'Image_Processing_Improvements\token-detection-training\labelled_data\tokens\CSV_files\Labels_HSV_RGB_20250311_141146.csv'  # Change this to your actual CSV file path
+    csv_path = r'C:\Users\MaiaRamambason\OneDrive - Imperial College London\Desktop\Year5\UCL_BIP\Object_Detection_Trial\color-detection-opencv\game_code\token_model_training\labelled_data\tokens\CSV_files\Labels_HSV_RGB_20250320_111026.csv'  # Change this to your actual CSV file path
     knn_trainer = KNNTrainer(csv_path)
     knn_trainer.run()

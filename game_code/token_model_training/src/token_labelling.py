@@ -5,13 +5,13 @@ import time
 import numpy as np
 from camera_01 import CameraLabelling
 
-module_path = os.path.abspath(r"C:\Users\MaiaRamambason\OneDrive - Imperial College London\Desktop\Year5\UCL_BIP\Object_Detection_Trial\color-detection-opencv\Image_Processing_Improvements\token-detection-01\src")
+module_path = os.path.abspath(r"C:\Users\MaiaRamambason\OneDrive - Imperial College London\Desktop\Year5\UCL_BIP\Object_Detection_Trial\color-detection-opencv\game_code\token_detection\src")
 if module_path not in sys.path:
     print("Adding module path to sys.path")
     sys.path.append(module_path)
     print(f"sys.path: {sys.path}")
     
-import white_patch_capture   
+import white_patch_capture
 from white_patch_capture import WhitePatchCapture
 
 class TokenLabeller:
@@ -84,7 +84,7 @@ class TokenLabeller:
         for contour in contours:
             _, size, _ = cv2.minAreaRect(contour)
             area = size[0] * size[1]
-            if area > 90000 and area > largest_area:
+            if area > 40000 and area > largest_area:
                 largest_area = area
                 x, y, w, h = cv2.boundingRect(contour)
                 roi = (x, y, w, h)
@@ -150,7 +150,7 @@ class TokenLabeller:
             
     def whitepatch_balancing(self,frame):
         white_patch_balancer = WhitePatchCapture()
-        image_with_rectangles, image_patch = white_patch_balancer.whitepatch_balancing(frame)
+        image_with_rectangles, image_patch = white_patch_balancer.select_image_patch(frame)
         cv2.imshow('White Patch Calibration', image_with_rectangles)
         return image_patch
 
@@ -196,7 +196,7 @@ class TokenLabeller:
 
 if __name__ == "__main__":
     while True:
-        color = "orange"
+        color = "magenta"
         valid_colors = ["yellow", "cyan", "green", "magenta", "orange", "blue"]
         
         if color not in valid_colors:
@@ -204,7 +204,7 @@ if __name__ == "__main__":
         else:
             print(f"Color accepted: {color}")
             
-            output_folder = "Image_Processing_Improvements/token-detection-training/labelled_data"  # Change this to your actual output folder path
+            output_folder = r"game_code\token_model_training\labelled_data\tokens"  # Change this to your actual output folder path
             labeller = TokenLabeller(color, output_folder)
             print("TokenLabeller instance created.")
             labeller.run()

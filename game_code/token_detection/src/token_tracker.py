@@ -7,6 +7,13 @@ from token_detection import TokenDetectionSystem
 
 class TokenTracking:
     def __init__(self, shared_queue, history_size=5):
+        """
+        Initialize the TokenTracking system.
+
+        Parameters:
+            shared_queue (queue.Queue): Shared queue for receiving classifications from the detection system.
+            history_size (int): Length of the temporal filter for smoothing counts.
+        """
         self.next_object_id = 0
         self.objects = {}
         self.disappeared = {}
@@ -15,16 +22,37 @@ class TokenTracking:
         self.max_dissapeared = history_size
 
     def register(self, centroid, color):
+        """
+        Register a new object with a given centroid and color.
+
+        Parameters:
+            centroid (tuple): The (x, y) coordinates of the object's centroid.
+            color (str): The color of the object.
+        """
         self.objects[self.next_object_id] = (centroid, color)
         self.disappeared[self.next_object_id] = 0
         self.next_object_id += 1
 
     def deregister(self, object_id):
+        """
+        Deregister an object by its ID.
+
+        Parameters:
+            object_id (int): The ID of the object to deregister.
+        """
         del self.objects[object_id]
         del self.disappeared[object_id]
 
     def update(self, classifications):
-        """ Updates the tracker with new detections. """
+        """
+        Update the tracker with new detections.
+
+        Parameters:
+            classifications (list): List of classifications, where each classification is a tuple (label, centroid, color).
+
+        Returns:
+            dict: Updated objects being tracked.
+        """
         if len(classifications) == 0:
             for object_id in list(self.disappeared.keys()):
                 self.disappeared[object_id] += 1
@@ -85,11 +113,18 @@ class TokenTracking:
         return self.objects
 
     def get_smoothed_counts(self):
-        """ Returns smoothed token counts. """
+        """
+        Returns smoothed token counts.
+
+        Returns:
+            dict: Smoothed counts of tokens for each color.
+        """
         return {color: int(np.mean(list(counts))) for color, counts in self.token_history.items()}
 
     def run(self):
-        """ Runs tracking system in an infinite loop"""
+        """
+        Runs the tracking system in an infinite loop.
+        """
         while True:
             classifications = self.shared_queue.get(block=True)
             print(f"tracking received: {classifications} of length {len(classifications)}")

@@ -85,6 +85,6 @@ class ColorFeatureExtractor:
 
 # Example usage
 if __name__ == "__main__":
-    base_folder = "Image_Processing_Improvements/token-detection-training/labelled_data/tokens"  # Change this to your actual base folder path
+    base_folder = r"game_code\token_model_training\labelled_data\tokens"  # Change this to your actual base folder path
     extractor = ColorFeatureExtractor(base_folder)
     extractor.run()

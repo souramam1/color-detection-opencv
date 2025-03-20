@@ -29,4 +29,21 @@ class WhitePatchCapture:
         cv2.imshow("Image with rectangles", image_with_rectangles)
         
         return image_with_rectangles, image_patch
+    
+    def calculate_image_max(self, frame, image_patch):
+        ''' Applies whitepatch balancing to input frame based on image patch from calibration phase
+        
+        Parameter: 
+            frame: np.ndarray: image frame to be balanced
+            image_patch: np.ndarray : small chunk of image (ideally white background)
+            
+        Returns:
+            frame: np.ndarray: whitepatch balanced frame
+            
+        '''
+        # Perform white patch balancing, using the frame and patch
+        image_max = (frame * 1.0 / image_patch.max(axis=(0, 1))).clip(0, 1)
+        image_max = (image_max * 255).astype(np.uint8)   
+        
+        return image_max
 

@@ -34,7 +34,7 @@ class ContourProcessing:
         for contour in contours:
             _, size, _ = cv2.minAreaRect(contour)
             area = size[0] * size[1]
-            if area > 90000 and area > largest_area:
+            if area > 40000 and area > largest_area:
                 largest_area = area
                 x, y, w, h = cv2.boundingRect(contour)
                 roi = (x, y, w, h)
