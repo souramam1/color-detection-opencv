@@ -55,6 +55,7 @@ class TokenDetectionSystem:
         try:
             while True:
                 frame = self.camera.capture_frame()
+                print("Frame captured")
                 if frame is not None:
                     #isolate token coordinates
                     isolated_token_coords = self.contour_processing.process_frame(frame, image_patch)
@@ -65,14 +66,12 @@ class TokenDetectionSystem:
                     print(f"length of classifications to be sent are: {len(classifications)}")
                     # send the data to the queue to be accessed by token tracker
                     self.shared_queue_d_to_t.put(classifications)
-                    
-
-                    
+                   
                 if cv2.waitKey(10) & 0xFF == ord('q'):
                     break
         finally:
             self.camera.cleanup()
-0
+
 if __name__ == "__main__":
     script_queue = queue.Queue()
     model = r"game_code\token_model_training\models\2025-03-20-11-23_knn_model.pkl"
