@@ -196,7 +196,7 @@ class TokenLabeller:
 
 if __name__ == "__main__":
     while True:
-        color = "magenta"
+        color = "orange"
         valid_colors = ["yellow", "cyan", "green", "magenta", "orange", "blue"]
         
         if color not in valid_colors:
