@@ -20,7 +20,7 @@ class ContourProcessing:
         contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         return contours
 
-    def find_largest_roi(self, contours):
+    def find_largest_roi(self, contours,display_frame):
         ''' Finds outer most rectangle, defined as being the edges of the "battery"
 
             Parameters:
@@ -39,6 +39,8 @@ class ContourProcessing:
                 x, y, w, h = cv2.boundingRect(contour)
                 roi = (x, y, w, h)
                 #print(f"ROI: {roi}")
+                cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv2.imshow("ROI", display_frame)
         return roi
     
     def isolate_roi_contours(self, contours: list[np.ndarray], roi: list[int,int,int,int]):
@@ -144,7 +146,7 @@ class ContourProcessing:
         # find canny contours from frame
         canny_contours = self.identify_contours(balanced_frame)
         # isolate token coordinates within a roi
-        isolated_token_coords = self.identify_token_coords(canny_contours)
+        isolated_token_coords = self.identify_token_coords(canny_contours,balanced_frame)
         
         return isolated_token_coords
         
@@ -170,17 +172,18 @@ class ContourProcessing:
         
         return contours_canny
     
-    def identify_token_coords(self, contours: list[np.ndarray]) -> list:
+    def identify_token_coords(self, contours: list[np.ndarray],display_frame) -> list:
         '''Processes canny contours and filters them to retrive isolated coordinates of token corner points
         
         Parameters:
             contours:  list[np.ndarray] The list of NumPy arrays details all found Canny contours to be filtered 
             so that tokens can be identified
+            display_frame: passed in so that the roi can be displayed on the frame
             
         Returns:
             contours of the detected Canny edges as a list of NumPy arrays'''
         # defines the eges of the roi from the frame
-        roi = self.find_largest_roi(contours)
+        roi = self.find_largest_roi(contours, display_frame)
         # identifies tokens within that roi and returns the list of their box coordinates
         token_rect_coords = self.isolate_roi_contours(contours, roi)
         #print(f"Token coordinates: {token_rect_coords}")
