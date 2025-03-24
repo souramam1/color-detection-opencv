@@ -34,12 +34,16 @@ class ContourProcessing:
         for contour in contours:
             _, size, _ = cv2.minAreaRect(contour)
             area = size[0] * size[1]
+            box = cv2.boxPoints(cv2.minAreaRect(contour))
+            box = np.int32(box)
             if area > 40000 and area > largest_area:
                 largest_area = area
-                x, y, w, h = cv2.boundingRect(contour)
-                roi = (x, y, w, h)
+                # x, y, w, h = cv2.boundingRect(contour)
+                # roi = (x, y, w, h)
+                roi = box
                 #print(f"ROI: {roi}")
-                cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                #cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                cv2.drawContours(display_frame, [box], 0, (0, 255, 0), 2)
         cv2.imshow("ROI", display_frame)
         return roi
     
@@ -54,14 +58,14 @@ class ContourProcessing:
         
         """ 
         # Check if ROI is valid
-        if roi is None or not isinstance(roi, (list, tuple)) or len(roi) != 4:
+        if roi is None or not isinstance(roi, np.ndarray) or roi.shape != (4,2):
             print("Warning: Invalid ROI provided. Skipping contour isolation.")
             return []  # Return an empty list if ROI is invalid
 
-        roi_x, roi_y, roi_w, roi_h = roi
+        # roi_x, roi_y, roi_w, roi_h = roi
   
             
-        roi_x, roi_y, roi_w, roi_h = roi
+        # roi_x, roi_y, roi_w, roi_h = roi
         
         isolated_token_rectangles = []
         
@@ -74,6 +78,7 @@ class ContourProcessing:
             x, y = rect[0][0], rect[0][1]
             width, height = rect[1][0], rect[1][1]
             area = width * height
+            print(f"area : {area}")
             
             # Skip if one side is more than 3 times the other - avoids slivers of colour from shadows
             if max(width, height) > 3 * min(width, height):
@@ -81,7 +86,7 @@ class ContourProcessing:
                 continue
              
             if 300 < area <= 900:
-                if roi_x <= x <= roi_x + roi_w and roi_y <= y <= roi_y + roi_h:
+                if cv2.pointPolygonTest(roi, (x, y), measureDist=False) >= 0:
                     #print(f"Token detected at ({x}, {y}) with area {area}")
                     if self.non_identical_check(rect, isolated_token_rectangles):
                         isolated_token_rectangles.append(rect)
