@@ -20,57 +20,74 @@ class ContourProcessing:
         contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         return contours
 
-    def find_largest_roi(self, contours,display_frame):
-        ''' Finds outer most rectangle, defined as being the edges of the "battery"
+    def find_largest_roi(self, contours, display_frame):
+        ''' Finds the largest rectangle, defined as being the edges of the "battery"
 
             Parameters:
-                Input: All canny detected contours as list of NumPy array
-            
+                contours (list): All canny detected contours as list of NumPy arrays
+                display_frame (np.ndarray): The frame to draw the ROI on
+                
             Returns:
-                Output: X,Y,W,H coordinates of the rectangle in a list.
+                np.ndarray: The largest rotated rectangle.
         '''
         largest_area = 0
-        roi = None
+        roi_game = None
         for contour in contours:
-            _, size, _ = cv2.minAreaRect(contour)
-            area = size[0] * size[1]
-            box = cv2.boxPoints(cv2.minAreaRect(contour))
+            rect = cv2.minAreaRect(contour)
+            box = cv2.boxPoints(rect)
             box = np.int32(box)
+            area = rect[1][0] * rect[1][1]
             if area > 40000 and area > largest_area:
                 largest_area = area
-                # x, y, w, h = cv2.boundingRect(contour)
-                # roi = (x, y, w, h)
-                roi = box
-                #print(f"ROI: {roi}")
-                #cv2.rectangle(display_frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+                roi_game = box
+                # Draw the ROI on the frame
                 cv2.drawContours(display_frame, [box], 0, (0, 255, 0), 2)
+        
+        
+        if roi_game is not None:
+            # Calculate the top 57% and bottom 43% of the ROI
+            roi_batt = np.array([
+                roi_game[0],
+                roi_game[1],
+                roi_game[1] + 0.57 * (roi_game[2] - roi_game[1]),
+                roi_game[0] + 0.57 * (roi_game[3] - roi_game[0])
+            ], dtype=np.int32)
+            
+            roi_time = np.array([
+                roi_game[0] + 0.57 * (roi_game[3] - roi_game[0]),
+                roi_game[1] + 0.57 * (roi_game[2] - roi_game[1]),
+                roi_game[2],
+                roi_game[3]
+            ], dtype=np.int32)
+            
+            # Draw the top 57% (roi_batt) in blue
+            cv2.drawContours(display_frame, [roi_batt], 0, (255, 0, 0), 2)
+            
+            # Draw the bottom 43% (roi_time) in red
+            cv2.drawContours(display_frame, [roi_time], 0, (0, 0, 255), 2)
+        
         cv2.imshow("ROI", display_frame)
-        return roi
+
+        return roi_game, roi_batt, roi_time
     
-    def isolate_roi_contours(self, contours: list[np.ndarray], roi: list[int,int,int,int]):
+    def isolate_roi_contours(self, contours: list[np.ndarray], roi: np.ndarray):
         """Identifies contour coordinates of rectangular tokens within a given ROI
         
             Parameters: 
-                Input: All frame contours as a list of NumPy arrays, detected by canny edge detection
-            
+                contours (list): All frame contours as a list of NumPy arrays, detected by canny edge detection
+                roi (np.ndarray): The rotated rectangle defining the ROI
+                
             Returns:
-                Output: Box corner coordinates, as a list of the rectangles identified as tokens within the ROI
-        
+                list: Box corner coordinates, as a list of the rectangles identified as tokens within the ROI
         """ 
         # Check if ROI is valid
-        if roi is None or not isinstance(roi, np.ndarray) or roi.shape != (4,2):
+        if roi is None or not isinstance(roi, np.ndarray) or roi.shape != (4, 2):
             print("Warning: Invalid ROI provided. Skipping contour isolation.")
             return []  # Return an empty list if ROI is invalid
 
-        # roi_x, roi_y, roi_w, roi_h = roi
-  
-            
-        # roi_x, roi_y, roi_w, roi_h = roi
-        
         isolated_token_rectangles = []
         
         for contour in contours:
-            # minAreaRect can deal with rotated rectangles
             rect = cv2.minAreaRect(contour)
             box = cv2.boxPoints(rect)
             box = np.int32(box)
@@ -78,20 +95,17 @@ class ContourProcessing:
             x, y = rect[0][0], rect[0][1]
             width, height = rect[1][0], rect[1][1]
             area = width * height
-            print(f"area : {area}")
             
             # Skip if one side is more than 3 times the other - avoids slivers of colour from shadows
             if max(width, height) > 3 * min(width, height):
-                #print(f"Skipping rectangle at ({x}, {y}) due to extreme aspect ratio.")
                 continue
              
             if 300 < area <= 900:
-                if cv2.pointPolygonTest(roi, (x, y), measureDist=False) >= 0:
-                    #print(f"Token detected at ({x}, {y}) with area {area}")
+                # Check if the center of the rectangle is within the ROI
+                if cv2.pointPolygonTest(roi, (x, y), False) >= 0:
                     if self.non_identical_check(rect, isolated_token_rectangles):
                         isolated_token_rectangles.append(rect)
                     else:
-                        #print(f"Skipping rectangle at ({x}, {y}) due to proximity to existing token.")
                         continue
                                 
         return isolated_token_rectangles
@@ -188,9 +202,9 @@ class ContourProcessing:
         Returns:
             contours of the detected Canny edges as a list of NumPy arrays'''
         # defines the eges of the roi from the frame
-        roi = self.find_largest_roi(contours, display_frame)
+        roi_game, roi_batt, roi_time = self.find_largest_roi(contours, display_frame)
         # identifies tokens within that roi and returns the list of their box coordinates
-        token_rect_coords = self.isolate_roi_contours(contours, roi)
+        token_rect_coords = self.isolate_roi_contours(contours, roi_game)
         #print(f"Token coordinates: {token_rect_coords}")
         
         return token_rect_coords

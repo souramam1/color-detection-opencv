@@ -5,7 +5,7 @@ import cv2
 from filterpy.kalman import KalmanFilter
 
 class TokenTracking:
-    def __init__(self, shared_queue_d_to_t, history_size=10, stability_threshold=5, max_disappear=5):
+    def __init__(self, shared_queue_d_to_t, history_size=15, stability_threshold=15, max_disappear=15):
         self.next_object_id = 0
         self.objects = {}  # {object_id: (x, y, color_label, kalman_filter, deque, disappear_count)}
         self.available_ids = set()  # Deregistered IDs for reuse
@@ -77,6 +77,7 @@ class TokenTracking:
                 self.objects[object_id] = (x, y, color_label, kf, o_deque, 0)
                 o_deque.append(1)  # Mark as seen
                 matched_objects.add(object_id)
+                print(f"Object updated as seen before, deque: {o_deque} ")
                 del current_detections[best_match]
 
         # Register new objects
