@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>User Data Table</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 50%;
+            margin: auto;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>User Data</h1>
+    <form method="post">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required>
+        <button type="submit">Submit</button>
+    </form>
+    <br>
+    <table>
+        <tr>
+            <th>Username</th>
+            <th>Timestamp</th>
+        </tr>
+        {% if user_data %}
+            {% for entry_key, entry_data in user_data.items() %}
+            <tr>
+                <td>{{ entry_data['username'] }}</td>
+                <td>{{ entry_data['timestamp'] }}</td>
+            </tr>
+            {% endfor %}
+        {% else %}
+            <tr>
+                <td colspan="2">No user data available.</td>
+            </tr>
+        {% endif %}
+    </table>
+</body>
+</html>

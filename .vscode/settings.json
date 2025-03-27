@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./Image_Processing_Improvements/token-detection-01/src"
+    ]
+}
