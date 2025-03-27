@@ -3,7 +3,9 @@ import numpy as np
 from scipy.spatial import distance
 import cv2
 from filterpy.kalman import KalmanFilter
-
+'''This is not completed - it will run, but the smoothing may not be implemented correctly.
+Add a visualisation to see the counts.
+'''
 class TokenTracking:
     def __init__(self, shared_queue_d_to_t, history_size=15, stability_threshold=15, max_disappear=15):
         self.next_object_id = 0
@@ -13,6 +15,7 @@ class TokenTracking:
         self.history_size = history_size
         self.stability_threshold = stability_threshold
         self.max_disappear = max_disappear  # Frames before considering an object removed
+        self.present_tokens = {}  # Tracks tokens currently present on the board
         print("Token Tracking System Initialized")
 
     def create_kalman_filter(self, x, y):
@@ -77,7 +80,6 @@ class TokenTracking:
                 self.objects[object_id] = (x, y, color_label, kf, o_deque, 0)
                 o_deque.append(1)  # Mark as seen
                 matched_objects.add(object_id)
-                print(f"Object updated as seen before, deque: {o_deque} ")
                 del current_detections[best_match]
 
         # Register new objects
@@ -114,6 +116,22 @@ class TokenTracking:
 
         return placed_tokens, removed_tokens
 
+    def update_present_tokens(self, placed_tokens, removed_tokens):
+        """Updates the dictionary of tokens currently present on the board."""
+        # Add newly placed tokens if they are not duplicates
+        for object_id, x, y, color_label in placed_tokens:
+            is_duplicate = any(
+                (x == existing_x and y == existing_y and color_label == existing_color_label)
+                for existing_x, existing_y, existing_color_label in self.present_tokens.values()
+            )
+            if not is_duplicate:
+                self.present_tokens[object_id] = (x, y, color_label)
+
+        # Remove tokens that are marked as removed
+        for object_id, color_label in removed_tokens:
+            if object_id in self.present_tokens:
+                del self.present_tokens[object_id]
+
     def run(self):
         """Main loop for tracking and event detection."""
         while True:
@@ -122,10 +140,15 @@ class TokenTracking:
 
             placed_tokens, removed_tokens = self.detect_events()
 
+            # Update the dictionary of present tokens
+            self.update_present_tokens(placed_tokens, removed_tokens)
+
             if placed_tokens:
                 print(f"New tokens placed: {placed_tokens}")
             if removed_tokens:
                 print(f"Tokens removed: {removed_tokens}")
+
+            print(f"Currently present tokens: {self.present_tokens}")
 
             if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
